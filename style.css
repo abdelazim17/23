@@ -55,7 +55,7 @@ a{text-decoration:none;color:inherit}
 .qty-input{appearance:textfield;-moz-appearance:textfield;width:46px;text-align:center;border:1px solid rgba(59,36,16,.14);border-radius:6px;padding:4px;font-size:1rem;font-weight:bold}
 .add-to-cart-btn{background:var(--primary);color:white;border:none;width:100%;padding:10px;border-radius:6px;cursor:pointer;font-weight:700;font-size:1rem;transition:0.2s}
 .custom-select-wrapper{position:relative;width:100%;margin-top:auto;margin-bottom:12px;font-family:'Cairo', sans-serif;font-weight:700;font-size:0.95rem;user-select:none}
-.custom-select-display{position:relative;display:flex;justify-content:center;align-items:center;padding:0 10px;height:45px;border-radius:8px;border:1px solid rgba(59,36,16,.14);background:#F4F3EF;color:var(--text-color,#3B2410);cursor:pointer;transition:0.2s;font-weight:800}
+.custom-select-display{position:relative;display:flex;justify-content:center;align-items:center;padding:0 10px;height:45px;border-radius:8px;border:1.5px solid var(--g-brd);box-shadow:0 0 0 1px rgba(222,87,24,.10);background:var(--g-soft);color:var(--text-color,#3B2410);cursor:pointer;transition:0.2s;font-weight:800}
 .custom-select-display::after{content:'';position:absolute;inset-inline-end:12px;top:50%;width:7px;height:7px;border:solid #DE5718;border-width:0 2.5px 2.5px 0;transform:translateY(-70%) rotate(45deg);pointer-events:none}
 .custom-select-display span{padding-inline:18px;box-sizing:border-box;width:100%;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .custom-select-display:hover{border-color:var(--primary)}
@@ -347,7 +347,7 @@ video.fx-vid{width:100%;height:100%;object-fit:cover;display:block}
 }
 .cart-sidebar.fx-full{display:grid !important;grid-template-columns:minmax(16px,1fr) minmax(0,620px) minmax(0,420px) minmax(16px,1fr);column-gap:24px;grid-template-rows:auto;align-content:start;overflow-y:auto}
 .cart-sidebar.fx-full .cart-header{grid-column:1/-1;position:sticky;top:0;z-index:2;padding-inline:max(16px,calc((100% - 1100px)/2))}
-.cart-sidebar.fx-full .cart-items{grid-column:2/3;overflow:visible;flex:none;padding:18px;margin:20px 0;background:var(--card-bg);border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.06);align-self:start}
+.cart-sidebar.fx-full .cart-items{grid-column:2/3;overflow:visible;flex:none;padding:18px;margin:20px 0;background:var(--g-bg);border:1.5px solid var(--g-brd);border-radius:18px;box-shadow:var(--g-sh);align-self:start}
 .cart-sidebar.fx-full .cart-footer{grid-column:3/4;max-height:none;overflow:visible;margin:20px 0;border:none;border-radius:18px;box-shadow:0 8px 24px rgba(0,0,0,.06);align-self:start;position:sticky;top:90px}
 @media(max-width:900px){
 .cart-sidebar.fx-full{grid-template-columns:14px minmax(0,1fr) 14px;column-gap:0}
@@ -746,7 +746,7 @@ body{background-image:none !important}
 .cart-sidebar.fx-full{background:var(--bg-color) !important}
 #card-channel::before,#card-contact::before,.qr-card::before{background:var(--p-green) !important}
 .qr-card .btn-primary,.fx-sharebtn{background:var(--p-dark) !important;color:#fff !important;box-shadow:none !important;border:none !important}
-.glass-icon{background:var(--p-cream2) !important;box-shadow:none !important;}
+.glass-icon{background:var(--g-soft) !important;border:1.5px solid var(--g-brd) !important;box-shadow:var(--g-sh) !important}
 .slide-item::after{background:linear-gradient(transparent 55%,rgba(0,0,0,.22)) !important}
 .mag2-head{display:none}
 body:has(#fx-footer){padding-bottom:0 !important}
@@ -789,7 +789,7 @@ body.fx-nav-flat .mobile-top-nav a{border-radius:12px !important}
 .added-pop.out{opacity:0}
 @keyframes popIn{from{transform:translate(-50%,-50%) scale(.6);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
 #cart-progress{display:flex;flex-direction:column;margin:0 0 10px}
-.cp{background:var(--p-cream2);border-radius:12px;font-weight:800;color:var(--p-dark)}
+.cp{background:var(--g-soft);border:1.5px solid var(--g-brd);box-shadow:0 0 0 1px rgba(222,87,24,.08);border-radius:12px;font-weight:800;color:var(--p-dark)}
 .cp span{display:flex;gap:6px;align-items:center}
 .cp-bar{border-radius:99px;background:rgba(0,0,0,.1);overflow:hidden}
 .cp-bar i{display:block;height:100%;border-radius:99px;background:var(--p-green);transition:width .3s}
@@ -1285,7 +1285,7 @@ header.navbar::after,header.navbar::before{display:none !important}
 .about-container h1,.about-container h2,.about-container h3{color:var(--text-color,#3B2410) !important}
 .cart-sidebar,.cart-header,.cart-footer,.acct-modal,.acct-card,.invoice-modal .inv-sheet,.search-modal{background:#fff !important;color:var(--text-color,#3B2410) !important}
 .cart-item{background:#F4F3EF !important;border:1px solid var(--ln) !important}
-input,select,textarea{background:#fff !important;color:var(--text-color,#3B2410) !important;border:1px solid var(--ln) !important}
+input,select,textarea{background:rgba(255,255,255,.72) !important;color:var(--text-color,#3B2410) !important;border:1.5px solid rgba(222,87,24,.18) !important}
 input:focus,select:focus,textarea:focus{border-color:var(--primary,#DE5718) !important;outline:none !important}
 .logo .logo-swap{position:relative;direction:ltr;padding-inline:22px !important}
 .logo-swap .lg{width:100%;text-align:center;opacity:1 !important;transform:none !important}
@@ -1545,8 +1545,8 @@ header.navbar .logo .logo-swap .lg-ar{font-size:4.9vw !important}
 }
 :root{--tm-or:#DE5718;--tm-ord:#C4480F;--tm-br:#5A3114;--tm-brd:#3B2410;--tm-of:#F4F1E9;--tm-ofl:#FCFAF5;--tm-wh:#FFFFFF;--tm-ye:#F9B914;--tm-ln:#E6DCC8;--ink:#3B2410;--or:#DE5718;--of:#F4F1E9;--ln:#E6DCC8;--primary:#DE5718;--primary-dark:#C4480F;--secondary:#5A3114;--bg-color:#FFFFFF;--text-color:#3B2410;--card-bg:#F4F1E9;--p-orange:#DE5718;--p-yellow:#F9B914;--p-cream1:#FCFAF5;--p-cream2:#F4F1E9;--t1:#F4F1E9;--t2:#F4F1E9;--t3:#F4F1E9;--t4:#F4F1E9}
 body.tm2.tm2.tm2{background:var(--bg-color) !important;color:#3B2410 !important}
-:root{--g-bg:rgba(255,255,255,.55);--g-bg2:rgba(255,251,245,.72);--g-pane:linear-gradient(160deg,rgba(255,248,240,.93),rgba(255,236,218,.9));--g-brd:rgba(255,255,255,.8);--g-blur:blur(12px) saturate(1.3);--g-sh:0 8px 28px rgba(150,80,30,.10),inset 0 1px 0 rgba(255,255,255,.85)}
-body.tm2.tm2.tm2::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(480px 400px at 6% 6%,rgba(255,176,128,.70),transparent 72%),radial-gradient(460px 420px at 96% 28%,rgba(255,215,120,.62),transparent 72%),radial-gradient(520px 440px at 4% 60%,rgba(255,160,130,.48),transparent 72%),radial-gradient(520px 460px at 90% 94%,rgba(236,196,150,.65),transparent 72%),radial-gradient(420px 360px at 48% 48%,rgba(255,232,200,.55),transparent 75%)}
+:root{--g-bg:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.40));--g-soft:rgba(255,255,255,.58);--g-bg2:rgba(255,251,245,.72);--g-pane:linear-gradient(160deg,rgba(255,248,240,.93),rgba(255,236,218,.9));--g-brd:rgba(255,255,255,.92);--g-blur:blur(12px) saturate(1.3);--g-sh:0 10px 28px rgba(190,90,30,.13),0 0 0 1px rgba(222,87,24,.11),inset 0 1.5px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.45)}
+body.tm2.tm2.tm2::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(480px 400px at 6% 6%,rgba(255,160,110,.80),transparent 72%),radial-gradient(460px 420px at 96% 28%,rgba(255,205,90,.72),transparent 72%),radial-gradient(520px 440px at 4% 60%,rgba(255,140,120,.58),transparent 72%),radial-gradient(520px 460px at 90% 94%,rgba(236,196,150,.65),transparent 72%),radial-gradient(420px 360px at 48% 48%,rgba(255,232,200,.55),transparent 75%)}
 body.tm2.tm2.tm2 :is(.page-view,main,.products-section){background:transparent !important}
 .tmc{flex:none}
 .tms{width:1.35em;height:1em;vertical-align:-.12em;flex:none}
@@ -1724,8 +1724,4 @@ body.tm2.tm2.tm2 .fx-hero-img img{display:block;-webkit-mask:url("data:image/svg
 body.tm2.tm2.tm2 .fx-hero-img img{border-radius:30px 30px 0 0}
 }
 .mobile-top-nav{padding-bottom:env(safe-area-inset-bottom)}
-/* ترولي ماركت فيرجن 24 */
-
-/* أثناء التمرير: نوقف الحركات المستمرة عشان الصفحة تفضل خفيفة */
-html.is-scrolling body.tm2.tm2.tm2 header.navbar .logo .logo-swap,html.is-scrolling body.tm2.tm2.tm2 header.navbar .logo .logo-swap *{animation-play-state:paused !important}
-/* ترولي ماركت فيرجن 25 */
+/* ترولي ماركت فيرجن 26 */

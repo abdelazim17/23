@@ -177,13 +177,15 @@ function debounced(f){var t=0;return function(){if(t)return;t=setTimeout(functio
 /* اللوجو: العربلة تقف جنب طرف الكلمة بنفس المسافة في العربي والإنجليزي (بتتقاس من عرض الكلمة الفعلي) */
 function fitLogo(){var sw=document.querySelector('header.navbar .logo-swap'),ar=document.getElementById('logo-name'),en=document.getElementById('logo-en'),ct=sw&&sw.querySelector('.lg-cart');if(!sw||!ar||!en||!ct)return;
   function tr(el){var r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect()}
-  var b=sw.getBoundingClientRect(),a=tr(ar),e=tr(en),h=ct.getBoundingClientRect().width/2;if(!b.width||!a.width||!e.width||!h)return;
-  var cur=parseFloat(sw.style.getPropertyValue('--lgs'))||1,nat=e.width/cur,cx=(e.left+e.right)/2-b.left,avail=2*(b.width-cx-(2*h+8)),sc=Math.min(1,avail/nat);
-  if(Math.abs(sc-cur)>0.015){sw.style.setProperty('--lgs',sc.toFixed(3));requestAnimationFrame(fitLogo);return}   // لو الإنجليزي مش واسع مع العربة: نصغّره شوية
-  var g=h+6,pl=Math.max(h,a.left-b.left-g),pr=Math.min(b.width-h,e.right-b.left+g);
+  function span(){var a=tr(ar),e=tr(en);return{w:Math.min(a.width||1e9,e.width||1e9)<1?0:1,lo:Math.min(a.left,e.left),hi:Math.max(a.right,e.right)}}
+  var GAP=12;
+  ar.style.removeProperty('font-size');sw.style.setProperty('--lgs','1');          // نقيس على الحجم الطبيعي الأول
+  var b=sw.getBoundingClientRect(),h=ct.getBoundingClientRect().width/2,s=span();if(!b.width||!s.w||!h)return;
+  var mid=(s.lo+s.hi)/2,half=(s.hi-s.lo)/2,room=Math.min(mid-b.left,b.right-mid)-(2*h+GAP),sc=Math.max(.4,Math.min(1,room/half));
+  if(sc<.995){sw.style.setProperty('--lgs',sc.toFixed(3));ar.style.setProperty('font-size',(parseFloat(getComputedStyle(ar).fontSize)*sc).toFixed(2)+'px','important');b=sw.getBoundingClientRect();s=span()}   // العربي والإنجليزي بيصغّروا مع بعض لو المكان ضيق
+  var pl=Math.max(h,s.lo-b.left-GAP-h),pr=Math.min(b.width-h,s.hi-b.left+GAP+h);
   sw.style.setProperty('--pl',pl.toFixed(1)+'px');sw.style.setProperty('--pr',pr.toFixed(1)+'px');sw.style.setProperty('--dx',(pr-pl).toFixed(1)+'px')}
-(function(){var t,on=0,h=document.documentElement;function go(){if(!on){on=1;h.classList.add('is-scrolling')}clearTimeout(t);t=setTimeout(function(){on=0;h.classList.remove('is-scrolling')},180)}window.addEventListener('scroll',go,{passive:true});window.addEventListener('touchmove',go,{passive:true})})();   // التمرير: نوقف حركة اللوجو لحد ما يخلص
-window.addEventListener('resize',debounced(fitLogo));if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);
+window.addEventListener('resize',debounced(fitLogo));if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);window.addEventListener('load',function(){setTimeout(fitLogo,400);setTimeout(fitLogo,1800)});
 /* كبسولة البحث (من settings: شكل البحث) */
 function capsule(){if(!window.TM||!TM.S)return;var mode=S_('شكل البحث','كبسولة');document.body.classList.toggle('fx-sc',mode!=='أيقونة');
   var ac=document.getElementById('app-content');if(!ac)return;var r=ac.querySelector('.search-capsule-row');
@@ -194,4 +196,4 @@ function boot(){arm();vids();hero();capsule();tick();mo.observe(document.getElem
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 var n=0,iv=setInterval(function(){fitLogo();hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 25 */
+/* ترولي ماركت فيرجن 26 */
