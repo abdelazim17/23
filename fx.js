@@ -181,7 +181,8 @@ function fitLogo(){var sw=document.querySelector('header.navbar .logo-swap'),ar=
   var cur=parseFloat(sw.style.getPropertyValue('--lgs'))||1,nat=e.width/cur,cx=(e.left+e.right)/2-b.left,avail=2*(b.width-cx-(2*h+8)),sc=Math.min(1,avail/nat);
   if(Math.abs(sc-cur)>0.015){sw.style.setProperty('--lgs',sc.toFixed(3));requestAnimationFrame(fitLogo);return}   // لو الإنجليزي مش واسع مع العربة: نصغّره شوية
   var g=h+6,pl=Math.max(h,a.left-b.left-g),pr=Math.min(b.width-h,e.right-b.left+g);
-  sw.style.setProperty('--pl',pl.toFixed(1)+'px');sw.style.setProperty('--pr',pr.toFixed(1)+'px')}
+  sw.style.setProperty('--pl',pl.toFixed(1)+'px');sw.style.setProperty('--pr',pr.toFixed(1)+'px');sw.style.setProperty('--dx',(pr-pl).toFixed(1)+'px')}
+(function(){var t,on=0,h=document.documentElement;function go(){if(!on){on=1;h.classList.add('is-scrolling')}clearTimeout(t);t=setTimeout(function(){on=0;h.classList.remove('is-scrolling')},180)}window.addEventListener('scroll',go,{passive:true});window.addEventListener('touchmove',go,{passive:true})})();   // التمرير: نوقف حركة اللوجو لحد ما يخلص
 window.addEventListener('resize',debounced(fitLogo));if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);
 /* كبسولة البحث (من settings: شكل البحث) */
 function capsule(){if(!window.TM||!TM.S)return;var mode=S_('شكل البحث','كبسولة');document.body.classList.toggle('fx-sc',mode!=='أيقونة');
@@ -193,4 +194,4 @@ function boot(){arm();vids();hero();capsule();tick();mo.observe(document.getElem
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 var n=0,iv=setInterval(function(){fitLogo();hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 23 */
+/* ترولي ماركت فيرجن 25 */
