@@ -6,7 +6,7 @@
   "dir": "rtl",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#F4F1E9",
+  "background_color": "#FFFFFF",
   "theme_color": "#DE5718",
   "icons": [
     {
@@ -20,5 +20,5 @@
       "type": "image/png"
     }
   ],
-  "version_name": "ترولي ماركت فيرجن 26"
+  "version_name": "ترولي ماركت فيرجن 27"
 }

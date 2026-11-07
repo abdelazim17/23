@@ -302,7 +302,7 @@ function applySettings() {
         root.setProperty('--secondary-dm', shade(secondary, 0.15)); root.setProperty('--secondary-dark-dm', secondary);
     }
     [['لون السطر الملوّن في الهيرو', '--hero-accent'], ['لون زر الهيرو 1', '--hero-btn1'], ['لون زر الهيرو 2', '--hero-btn2'], ['لون شارة الهيرو', '--hero-badge'],
-     ['لون الشريط المتحرك', '--ticker-bg'], ['لون خصم المنتجات', '--disc'], ['لون زر السلة العائمة', '--fab'], ['لون أيقونات نقاط الثقة', '--trust-ic']]
+     ['لون خصم المنتجات', '--disc'], ['لون زر السلة العائمة', '--fab'], ['لون أيقونات نقاط الثقة', '--trust-ic']]
         .forEach(([k, v]) => { const c = hex(S[k]); if (c) root.setProperty(v, c); });
     if (bg) root.setProperty('--bg-color', bg);
     if (card) root.setProperty('--card-bg', card);
@@ -728,7 +728,11 @@ function performSearch() {
     if (!q) { box.innerHTML = ''; return; }
     const words = q.split(/\s+/).filter(Boolean);
     if (!window.__sIdx || window.__sIdxN !== allProducts.length) { window.__sIdx = allProducts.map(p => ({ p, hay: norm(`${p['الاسم']} ${p['القسم']} ${variantsOf(p).map(v => v.n).join(' ')}`) })); window.__sIdxN = allProducts.length; }
-    const results = window.__sIdx.filter(e => words.every(w => e.hay.includes(w))).map(e => e.p);
+    let results = window.__sIdx.filter(e => words.every(w => e.hay.includes(w))).map(e => e.p);
+    if (!results.length) {   // مفيش نتيجة بالظبط: نسامح في غلطة حرف واحد (برتقان ← برتقال)
+        const near = (w, t) => { if (Math.abs(w.length - t.length) > 1) return false; let i = 0, j = 0, e = 0; while (i < w.length && j < t.length) { if (w[i] === t[j]) { i++; j++; continue; } if (++e > 1) return false; if (w.length > t.length) i++; else if (w.length < t.length) j++; else { i++; j++; } } return e + (w.length - i) + (t.length - j) <= 1; };
+        results = window.__sIdx.filter(e => { const toks = e.hay.split(/\s+/); return words.every(w => e.hay.includes(w) || (w.length >= 4 && toks.some(t => near(w, t)))); }).map(e => e.p);
+    }
     if (results.length) {
         box.innerHTML = `<div class="search-count">${results.length} نتيجة${results.length > 60 ? ' — اكتب كلمة أدق لتضييق النتائج' : ''}</div>` + gridHTML(results.slice(0, 60));
     } else {
@@ -1098,8 +1102,6 @@ async function checkout() {
     m += line;
     if (str(S['رسالة نهاية الطلب'])) m += `\n${str(S['رسالة نهاية الطلب'])}`;
     const mv = str(S['طريقة إرسال الطلب']), mode = /نص فقط/.test(mv) ? 'text' : /مشاركة/.test(mv) ? 'share' : 'text';
-    let waWin = null, invUrls = [];
-    if (mode === 'link') { try { waWin = window.open('', '_blank'); } catch (e) { } toast('بجهّز فاتورتك وبفتح الواتساب...'); }
     try {
         const url = getOrderApiUrl();
         const hist = getHist(); hist.unshift({ no, ts: d.toISOString(), phone: digits(phone), name, address: addr, landmark: land, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: i.base || String(i.name).replace(/ \([^()]*\)$/, ''), variant: i.variant || '', qty: i.qty, price: i.price })) });
@@ -1109,26 +1111,13 @@ async function checkout() {
             const baseOf = (i) => i.base || String(i.name).replace(/ \([^()]*\)$/, '');
             const prodCat = (n) => { const p = allProducts.find(x => str(x['الاسم']) === n); return p ? str(p['القسم']) : ''; };
             const order = { orderNo: no, ts: d.toISOString(), name, phone: digits(phone), address: addr, landmark: land, notes, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: baseOf(i), variant: i.variant || '', qty: i.qty, price: i.price, category: prodCat(baseOf(i)) })) };
-            let sent = false;
-            if (mode === 'link') {
-                try {
-                    const blobs = await buildInvoiceBlobs(getHist()[0], 'image/jpeg');
-                    const imgs = await Promise.all(blobs.map(b => new Promise(r => { const f = new FileReader(); f.onload = () => r(String(f.result).split(',')[1]); f.readAsDataURL(b); })));
-                    const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
-                    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...order, invoiceImages: imgs }), signal: ctl.signal });
-                    clearTimeout(tm); sent = true; try { const j = await r.json(); invUrls = (j && j.invoiceUrls) || []; } catch (e2) { }
-                } catch (e) { }
-            }
-            if (!sent) sendToSheet(order);
+            sendToSheet(order);
         }
     } catch (e) { }
     const waUrl = (txt) => `https://wa.me/${getCleanPhone(S['رقم الواتساب'])}?text=${encodeURIComponent(txt)}`;
     if (mode === 'text') window.open(waUrl(m), '_blank');
     cart = []; saveCart(); updateCartUI(); toggleCart(false); navigate('home'); window.scrollTo(0, 0);
-    if (mode === 'link') {
-        const full = invUrls.length ? m + '\n\n🧾 صورة الفاتورة:\n' + invUrls.join('\n') : m;
-        if (waWin && !waWin.closed) waWin.location.href = waUrl(full); else window.location.href = waUrl(full);
-    } else if (mode === 'share') offerInvoice(getHist()[0], { text: m });
+    if (mode === 'share') offerInvoice(getHist()[0], { text: m });
 }
 
 window.TM={get route(){return currentRoute},get user(){return getUser()},get S(){return S},get products(){return allProducts},get offers(){return allOffers},get cats(){return CATEGORIES},get catMeta(){return catMeta},navigate:(r)=>navigate(r),catLabel:(c)=>catLabel(c),get cart(){return cart},totals:()=>totals(),cur:()=>cur(),fmt:(n)=>fmt(n),priceInfo:(p)=>priceInfo(p),phone:()=>getCleanPhone(S['رقم الواتساب']),clear(){cart=[];saveCart();updateCartUI()}};
@@ -1209,4 +1198,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 26 */
+/* ترولي ماركت فيرجن 27 */

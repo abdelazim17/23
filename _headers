@@ -22,7 +22,4 @@
 
 /images/*
   Cache-Control: public, max-age=86400
-
-/icons/*
-  Cache-Control: public, max-age=604800
-# ترولي ماركت فيرجن 26
+# ترولي ماركت فيرجن 27
