@@ -389,53 +389,54 @@ function route(r) {
     else window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
-/* ---------- أدوات الحركة ---------- */
-const easeIO = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-function animateScroll(el, dx, dur, done) {
-    const id = el._anim = (el._anim || 0) + 1; const start = el.scrollLeft; let t0;
-    el.classList.add('anim');
-    const tick = (ts) => {
-        if (el._anim !== id) return;               // اتلغت (المستخدم لمس السلايدر)
-        if (!t0) t0 = ts;
-        const p = Math.min(1, (ts - t0) / dur);
-        el.scrollLeft = start + dx * easeIO(p);
-        if (p < 1) requestAnimationFrame(tick); else { el.classList.remove('anim'); if (done) done(); }
-    };
-    requestAnimationFrame(tick);
-}
-const cancelAnim = (el) => { el._anim = (el._anim || 0) + 1; el.classList.remove('anim'); };
-
-/* ---------- السلايدر: scroll-snap طبيعي + تشغيل تلقائي بسيط (من غير نسخ ولا قفزات) ---------- */
+/* ---------- السلايدر: scroll-snap أصلي + لف دائري حقيقي (نسخة من أول وآخر شريحة بتتبدّل بعد ما السحب يقف، فمفيش رجوع للأول) ---------- */
 function buildSlider() {
     const wrap = $('slider-wrap'), el = $('main-swipe-slider');
     const N = sliderData.length;
     if (!N) { wrap.style.display = 'none'; return; }
-    el.innerHTML = sliderData.map((s, i) => {
+    const slideHTML = (s, i, clone) => {
         const type = str(s['نوع الاستهداف']) || 'قسم', cat = str(s['القسم_المستهدف']), href = targetHref(type, cat);
         const ov = ovHTML(str(s['العنوان']), str(s['العنوان الفرعي']), str(s['نص الزر']));
         const badge = ov || ((cat && type === 'قسم' && !isNo(S['إظهار اسم القسم على السلايدر'])) ? `<div class="glass-badge">${esc(cat)}</div>` : '');
-        return `<div class="slide-item" data-i="${i}"${href ? ` data-href="${esc(href)}"` : ''}><img src="${esc(s['صورة'])}" alt="${esc(s['الاسم'] || '')}" draggable="false" decoding="async">${badge}</div>`;
-    }).join('');
+        return `<div class="slide-item" data-i="${i}"${clone ? ' data-clone="1" aria-hidden="true"' : ''}${href ? ` data-href="${esc(href)}"` : ''}><img src="${esc(s['صورة'])}" alt="${esc(s['الاسم'] || '')}" draggable="false" decoding="async">${badge}</div>`;
+    };
+    const real = sliderData.map((s, i) => slideHTML(s, i, false)).join('');
+    el.innerHTML = N > 1 ? slideHTML(sliderData[N - 1], N - 1, true) + real + slideHTML(sliderData[0], 0, true) : real;
     $('slider-dots').innerHTML = N > 1 ? sliderData.map((_, i) => `<button data-dot="${i}" aria-label="شريحة ${i + 1}"></button>`).join('') : '';
     $$('.slider-arrow').forEach(b => b.style.display = N > 1 ? '' : 'none');
     if (N < 2) return;
 
     const gen = window.__slGen = (window.__slGen || 0) + 1;
-    const kids = () => Array.from(el.children);
+    const kids = () => Array.from(el.children), reals = () => kids().filter(c => !c.dataset.clone);
     const delta = (c) => { const r = c.getBoundingClientRect(), b = el.getBoundingClientRect(); return (r.left + r.width / 2) - (b.left + b.width / 2); };
     const nearest = () => kids().reduce((best, c) => Math.abs(delta(c)) < Math.abs(delta(best)) ? c : best, el.children[0]);
-    const goTo = (c, smooth = true) => { if (!c) return; if (smooth) animateScroll(el, delta(c), 650); else el.scrollBy({ left: delta(c), behavior: 'auto' }); };
+    const goTo = (c, smooth = true) => {
+        if (!c) return;
+        if (smooth) { el.scrollBy({ left: delta(c), behavior: 'smooth' }); return; }
+        el.classList.add('anim'); el.scrollLeft += delta(c); void el.offsetWidth; el.classList.remove('anim');   // قفزة فورية: بنوقف الـsnap لحظة عشان المتصفح ما يوقفنا في نص الطريق
+    };
     const setDots = () => { const i = +nearest().dataset.i; $$('#slider-dots button').forEach((d, k) => d.classList.toggle('active', k === i)); };
-    let pauseUntil = 0, rafT = 0, dragging = false, startX = 0, startScroll = 0, moved = 0;
+    let pauseUntil = 0, rafT = 0, idleT = 0, dragging = false, touching = false, startX = 0, startScroll = 0, moved = 0;
 
-    el.addEventListener('scroll', () => { if (!rafT) rafT = requestAnimationFrame(() => { rafT = 0; setDots(); }); }, { passive: true });
-    el.addEventListener('touchstart', () => { cancelAnim(el); pauseUntil = Date.now() + 2500; }, { passive: true });
-    el.addEventListener('touchend', () => { pauseUntil = Date.now() + 2500; }, { passive: true });
+    /* لما السحب يقف وإحنا على نسخة، نقفز لنفس الشريحة الحقيقية (الشكل واحد فمش بيبان) */
+    const settle = () => {
+        if (window.__slGen !== gen || dragging || touching) return;
+        const c = nearest();
+        if (c.dataset.clone) { const r = reals().find(x => x.dataset.i === c.dataset.i); if (r) goTo(r, false); }
+    };
+    el.addEventListener('scroll', () => {
+        if (!rafT) rafT = requestAnimationFrame(() => { rafT = 0; setDots(); });
+        clearTimeout(idleT); idleT = setTimeout(settle, 110);
+    }, { passive: true });
+    el.addEventListener('touchstart', () => { touching = true; pauseUntil = Date.now() + 3000; }, { passive: true });
+    const tEnd = () => { touching = false; pauseUntil = Date.now() + 3000; clearTimeout(idleT); idleT = setTimeout(settle, 160); };
+    el.addEventListener('touchend', tEnd, { passive: true });
+    el.addEventListener('touchcancel', tEnd, { passive: true });
 
     /* سحب بالماوس (الكمبيوتر) */
     el.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
-        dragging = true; moved = 0; startX = e.clientX; startScroll = el.scrollLeft; pauseUntil = Date.now() + 2500;
+        dragging = true; moved = 0; startX = e.clientX; startScroll = el.scrollLeft; pauseUntil = Date.now() + 3000;
         el.classList.add('dragging');
     });
     window.addEventListener('mousemove', (e) => {
@@ -444,19 +445,16 @@ function buildSlider() {
     });
     window.addEventListener('mouseup', () => {
         if (window.__slGen !== gen || !dragging) return;
-        dragging = false; el.classList.remove('dragging'); goTo(nearest());
+        dragging = false; const c = nearest(); el.classList.remove('dragging'); goTo(c); pauseUntil = Date.now() + 3000;
     });
     el.addEventListener('click', (e) => { if (moved > 5) { e.stopPropagation(); e.preventDefault(); moved = 0; } }, true);
 
     /* الأسهم والنقاط */
-    const step = (dir) => {
-        const c = nearest(), n = dir > 0 ? (c.nextElementSibling || el.children[0]) : (c.previousElementSibling || el.lastElementChild);
-        goTo(n);
-    };
-    $$('.slider-arrow').forEach(b => b.addEventListener('click', () => { pauseUntil = Date.now() + 2500; step(b.dataset.slider === 'next' ? 1 : -1); }));
+    const step = (dir) => { const c = nearest(), n = dir > 0 ? c.nextElementSibling : c.previousElementSibling; goTo(n || c); };
+    $$('.slider-arrow').forEach(b => b.addEventListener('click', () => { pauseUntil = Date.now() + 3000; settle(); step(b.dataset.slider === 'next' ? 1 : -1); }));
     $('slider-dots').addEventListener('click', (e) => {
         const d = e.target.closest('[data-dot]'); if (!d) return;
-        pauseUntil = Date.now() + 2500; goTo(el.children[+d.dataset.dot]);
+        pauseUntil = Date.now() + 3000; goTo(reals()[+d.dataset.dot]);
     });
 
     /* تشغيل تلقائي */
@@ -464,67 +462,34 @@ function buildSlider() {
     const every = Math.max(2, num(S['مدة الانتقال بالثواني']) || 3) * 1000;
     if (window.__sliderTimer) clearInterval(window.__sliderTimer);
     if (!isNo(S['تشغيل السلايدر تلقائياً'])) window.__sliderTimer = setInterval(() => {
-        if (document.hidden || !inView() || dragging || Date.now() < pauseUntil || wrap.offsetParent === null) return;
-        step(1);
+        if (document.hidden || !inView() || dragging || touching || Date.now() < pauseUntil || wrap.offsetParent === null) return;
+        settle(); step(1);
     }, every);
 
     let lastW = el.clientWidth, rt;
     window.addEventListener('resize', () => { if (window.__slGen !== gen) return; clearTimeout(rt); rt = setTimeout(() => { if (el.clientWidth !== lastW) { lastW = el.clientWidth; goTo(nearest(), false); } }, 150); });
-    setDots();
+    requestAnimationFrame(() => { goTo(reals()[0], false); setDots(); });   // نبدأ على أول شريحة حقيقية (بعد النسخة)
 }
 
-/* ---------- أقسام سريعة: تلف بلا نهاية وتتحكم فيها من الإكسيل ---------- */
+/* ---------- أقسام سريعة: شريط سحب عادي، أول قسم ثابت على اليمين، ولما توصل لآخره بترجع للأول لوحدها ---------- */
 function renderQuickLinks() {
     const c = $('quick-links-container');
     if (!quickLinksData.length) { $('quick-wrap').style.display = 'none'; return; }
-    const mk = (arr) => arr.map(item => {
+    c.innerHTML = quickLinksData.map(item => {
         const href = targetHref(item['نوع الاستهداف'], item['القسم_المستهدف']);
         const off = (window.TM_DISABLED || []).includes(str(item['القسم_المستهدف']));
         return `<a class="quick-link-item${off ? ' off' : ''}" ${href ? `href="${esc(href)}"` : ''}><div class="quick-link-square"><img src="${esc(item['صورة'])}" alt="" draggable="false"></div><div class="quick-link-text">${esc(item['الاسم'])}</div>${off ? '<em class="ql-off">غير متوفر حاليًا</em>' : ''}</a>`;
     }).join('');
-    const one = mk(quickLinksData), oneM = mk([...quickLinksData].reverse());   // الشريط المتحرك LTR داخليًا، فبنعكس الترتيب عشان أول قسم يبقى على اليمين
-    c.classList.remove('ql-marquee');
-    if (isNo(S['تحريك الأقسام السريعة'])) { c.innerHTML = one; return; }   // من الإعدادات: بدون لف تلقائي (سحب عادي)
-    /* لف بلا نهاية بـ CSS فقط (من غير JS كل فريم) */
-    c.innerHTML = `<div class="ql-track">${oneM}</div>`;
-    const track = c.firstChild;
-    requestAnimationFrame(() => {
-        const set = track.scrollWidth; if (!set) return;
-        const k = Math.max(1, Math.ceil((c.clientWidth || 360) / set));
-        track.innerHTML = oneM.repeat(k * 2);
-        const half = track.scrollWidth / 2;
-        c.classList.add('ql-marquee');
-        if (c.__qlStop) c.__qlStop();
-        c.scrollLeft = Math.max(0, half - c.clientWidth);   // نبدأ من الطرف الأيمن: أول قسم على اليمين
-        const ac = new AbortController(); const sg = { signal: ac.signal };
-        /* لف تلقائي بسيط، تقدر تسحبه بإيدك، ويكمّل لوحده بعد ما تسيبه */
-        let pos = Math.max(0, half - c.clientWidth), last = 0, hold = false, timer = 0, raf = 0, dead = false;
-        const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const pause = () => { hold = true; clearTimeout(timer); };
-        const resume = (ms) => { clearTimeout(timer); timer = setTimeout(() => { pos = c.scrollLeft; hold = false; }, ms); };
-        const onUser = () => { pos = c.scrollLeft; if (pos >= half) { pos -= half; c.scrollLeft = pos; } else if (pos <= 0) { pos += half; c.scrollLeft = pos; } };
-        c.addEventListener('touchstart', pause, { passive: true, signal: ac.signal });
-        c.addEventListener('touchend', () => resume(2500), { passive: true, signal: ac.signal });
-        c.addEventListener('touchcancel', () => resume(2500), { passive: true, signal: ac.signal });
-        c.addEventListener('pointerdown', pause, sg);
-        c.addEventListener('pointerup', () => resume(2500), sg);
-        c.addEventListener('wheel', () => { pause(); resume(2500); }, { passive: true, signal: ac.signal });
-        c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) pause(); }, sg);
-        c.addEventListener('mouseleave', () => resume(800), sg);
-        c.addEventListener('scroll', () => { if (hold) onUser(); }, { passive: true, signal: ac.signal });
-        const tick = (t) => {
-            if (dead || !c.isConnected) return;
-            const dt = Math.min(64, t - (last || t)); last = t;
-            if (!hold && !reduce && (() => { const r = c.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; })() && !document.hidden) {
-                pos -= dt * 0.04;                 // ~40px في الثانية، باتجاه اليمين (من الشمال لليمين)
-                if (pos <= 0) pos += half;
-                c.scrollLeft = pos;
-            }
-            raf = requestAnimationFrame(tick);
-        };
-        c.__qlStop = () => { dead = true; cancelAnimationFrame(raf); ac.abort(); };
-        raf = requestAnimationFrame(tick);
-    });
+    if (c.__qlStop) c.__qlStop();
+    const ac = new AbortController(), sg = { signal: ac.signal, passive: true };
+    c.__qlStop = () => { clearTimeout(t); ac.abort(); };
+    let t = 0, down = false;
+    const atEnd = () => { const max = c.scrollWidth - c.clientWidth; return max > 8 && Math.abs(c.scrollLeft) >= max - 2; };
+    const back = !isNo(S['تحريك الأقسام السريعة']);
+    const check = (ms) => { clearTimeout(t); t = setTimeout(() => { if (back && !down && c.isConnected && atEnd()) c.scrollTo({ left: 0, behavior: 'smooth' }); }, ms); };
+    c.addEventListener('scroll', () => check(900), sg);
+    ['touchstart', 'pointerdown'].forEach(e => c.addEventListener(e, () => { down = true; clearTimeout(t); }, sg));
+    ['touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(e => c.addEventListener(e, () => { down = false; check(900); }, sg));
 }
 
 /* ---------- البنرات ---------- */
@@ -1198,4 +1163,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 27 */
+/* ترولي ماركت فيرجن 28 */

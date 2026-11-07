@@ -174,27 +174,23 @@ function about(){
 }
 /* 5) watch dynamic content */
 function debounced(f){var t=0;return function(){if(t)return;t=setTimeout(function(){t=0;f()},90)}}
-/* اللوجو: العربلة تقف جنب طرف الكلمة بنفس المسافة في العربي والإنجليزي (بتتقاس من عرض الكلمة الفعلي) */
+/* اللوجو: الحجم ثابت. بنقيس عرض الكلمتين (نسبة لحجم الخط) مرة واحدة ونثبّت --fa/--fe بحيث العربي والإنجليزي بنفس العرض، والعربة بتقف 12px بعد طرف الكلمة. مفيش أي تغيير لحجم الخط وقت التشغيل. */
 function fitLogo(){var sw=document.querySelector('header.navbar .logo-swap'),ar=document.getElementById('logo-name'),en=document.getElementById('logo-en'),ct=sw&&sw.querySelector('.lg-cart');if(!sw||!ar||!en||!ct)return;
-  function tr(el){var r=document.createRange();r.selectNodeContents(el);return r.getBoundingClientRect()}
-  var GAP=12;
-  ar.style.removeProperty('font-size');sw.style.setProperty('--lgs','1');          // نقيس على الحجم الطبيعي الأول
-  var b=sw.getBoundingClientRect(),h=ct.getBoundingClientRect().width/2,A=tr(ar),E=tr(en);if(!b.width||!A.width||!E.width||!h)return;
-  // السلة بتقف جنب العربي (الشمال) وجنب الإنجليزي (اليمين): كل طرف بيتقاس من كلمته هو
-  var cA=(A.left+A.right)/2,cE=(E.left+E.right)/2,need=2*h+GAP,
-      sA=(cA-b.left-need)/(cA-A.left),sE=(b.right-need-cE)/(E.right-cE),sc=Math.max(.4,Math.min(1,sA,sE));
-  if(sc<.995){sw.style.setProperty('--lgs',sc.toFixed(3));ar.style.setProperty('font-size',(parseFloat(getComputedStyle(ar).fontSize)*sc).toFixed(2)+'px','important');b=sw.getBoundingClientRect();A=tr(ar);E=tr(en)}   // لو المكان ضيق العربي والإنجليزي بيصغّروا مع بعض
-  var pl=Math.max(h,A.left-b.left-GAP-h),pr=Math.min(b.width-h,E.right-b.left+GAP+h);
-  sw.style.setProperty('--pl',pl.toFixed(1)+'px');sw.style.setProperty('--pr',pr.toFixed(1)+'px');sw.style.setProperty('--dx',(pr-pl).toFixed(1)+'px')}
-window.addEventListener('resize',debounced(fitLogo));if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);window.addEventListener('load',function(){setTimeout(fitLogo,400);setTimeout(fitLogo,1800)});
+  function em(el){var r=document.createRange();r.selectNodeContents(el);var w=r.getBoundingClientRect().width,f=parseFloat(getComputedStyle(el).fontSize);return w&&f?w/f:0}
+  var G=12,aw=sw.clientWidth,ea=em(ar),ee=em(en),h=parseFloat(getComputedStyle(ct).width)/2;if(!aw||!ea||!ee||!h)return;
+  var cap=window.matchMedia('(max-width:768px)').matches?30:42,W=Math.max(60,Math.min(aw-2*(2*h+G),cap*ea)),L=(aw-W)/2,R=(aw+W)/2,pl=L-G-h,pr=R+G+h;
+  function set(k,v){if(sw.style.getPropertyValue(k)!==v)sw.style.setProperty(k,v)}
+  set('--fa',(W/ea).toFixed(2)+'px');set('--fe',(W/ee).toFixed(2)+'px');set('--pl',pl.toFixed(1)+'px');set('--pr',pr.toFixed(1)+'px');set('--dx',(pr-pl).toFixed(1)+'px')}
+var lgW=0;window.addEventListener('resize',debounced(function(){var s=document.querySelector('header.navbar .logo-swap');if(s&&Math.abs(s.clientWidth-lgW)>1){lgW=s.clientWidth;fitLogo()}}));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);window.addEventListener('load',function(){setTimeout(fitLogo,400);setTimeout(fitLogo,1800)});
 /* كبسولة البحث (من settings: شكل البحث) */
 function capsule(){if(!window.TM||!TM.S)return;var mode=S_('شكل البحث','كبسولة');document.body.classList.toggle('fx-sc',mode!=='أيقونة');
   var ac=document.getElementById('app-content');if(!ac)return;var r=ac.querySelector('.search-capsule-row');
   if(!r){r=document.createElement('div');r.className='search-capsule-row';r.innerHTML='<button class="search-capsule" data-action="toggle-search" aria-label="بحث"><i class="fas fa-search"></i><span></span></button>';ac.insertBefore(r,ac.firstChild)}
   var t=r.querySelector('span'),v=S_('نص خانة البحث','ابحث عن منتج...');if(t.textContent!==v)t.textContent=v}
 var mo=new MutationObserver(debounced(function(){arm();vids();hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();syncTiles();viewFix()}));
-function boot(){arm();vids();hero();capsule();tick();mo.observe(document.getElementById('app-content')||document.body,{childList:true,subtree:true})}
+function boot(){fitLogo();arm();vids();hero();capsule();tick();mo.observe(document.getElementById('app-content')||document.body,{childList:true,subtree:true})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
-var n=0,iv=setInterval(function(){fitLogo();hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
+var n=0,iv=setInterval(function(){hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 27 */
+/* ترولي ماركت فيرجن 28 */
