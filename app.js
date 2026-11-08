@@ -508,7 +508,7 @@ function renderQuickLinks() {
         c.addEventListener('touchend', tEnd, sg); c.addEventListener('touchcancel', tEnd, sg);
         c.addEventListener('wheel', () => { pauseUntil = Date.now() + 3000; }, sg);
         c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) pauseUntil = Date.now() + 3000; }, sg);
-        const every = Math.max(2, num(S['مدة الانتقال بالثواني']) || 3) * 1000;
+        const every = Math.max(0.8, num(S['مدة حركة الأقسام السريعة بالثواني']) || 1.5) * 1000;
         const inView = () => { const r = c.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
         const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
         timer = setInterval(() => {
@@ -1190,4 +1190,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 29 */
+/* ترولي ماركت فيرجن 30 */

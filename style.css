@@ -1422,7 +1422,7 @@ body:not(.dark-mode) .search-capsule{color:#6b7468 !important}
 }
 :root{--tm-or:#DE5718;--tm-ord:#C4480F;--tm-br:#5A3114;--tm-brd:#3B2410;--tm-of:#F4F1E9;--tm-ofl:#FCFAF5;--tm-wh:#FFFFFF;--tm-ye:#F9B914;--tm-ln:#E6DCC8;--ink:#3B2410;--or:#DE5718;--of:#F4F1E9;--ln:#E6DCC8;--primary:#DE5718;--primary-dark:#C4480F;--secondary:#5A3114;--bg-color:#FFFFFF;--text-color:#3B2410;--card-bg:#F4F1E9;--p-orange:#DE5718;--p-yellow:#F9B914;--p-cream1:#FCFAF5;--p-cream2:#F4F1E9;--t1:#F4F1E9;--t2:#F4F1E9;--t3:#F4F1E9;--t4:#F4F1E9}
 body.tm2.tm2.tm2{background:var(--bg-color) !important;color:#3B2410 !important}
-:root{--g-bg:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.40));--g-soft:rgba(255,255,255,.58);--g-bg2:rgba(255,251,245,.72);--g-pane:linear-gradient(160deg,rgba(255,248,240,.93),rgba(255,236,218,.9));--g-brd:rgba(255,255,255,.92);--g-blur:blur(12px) saturate(1.3);--g-sh:0 10px 28px rgba(190,90,30,.13),0 0 0 1px rgba(222,87,24,.11),inset 0 1.5px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.45)}
+:root{--g-bg:linear-gradient(145deg,rgba(255,255,255,.82),rgba(255,255,255,.40));--g-soft:rgba(255,255,255,.58);--g-bg2:rgba(255,251,245,.72);--g-pane:linear-gradient(160deg,rgba(255,248,240,.93),rgba(255,236,218,.9));--g-brd:transparent;--g-blur:blur(12px) saturate(1.3);--g-sh:0 10px 28px rgba(190,90,30,.13),0 2px 6px rgba(190,90,30,.06)}
 body.tm2.tm2.tm2::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(480px 400px at 6% 6%,rgba(255,160,110,.80),transparent 72%),radial-gradient(460px 420px at 96% 28%,rgba(255,205,90,.72),transparent 72%),radial-gradient(520px 440px at 4% 60%,rgba(255,140,120,.58),transparent 72%),radial-gradient(520px 460px at 90% 94%,rgba(236,196,150,.65),transparent 72%),radial-gradient(420px 360px at 48% 48%,rgba(255,232,200,.55),transparent 75%)}
 body.tm2.tm2.tm2 :is(.page-view,main,.products-section){background:transparent !important}
 .tmc{flex:none}
@@ -1590,11 +1590,7 @@ header.navbar .logo-swap .lg-cart{position:absolute;top:50%;left:var(--pl,12px);
 body.tm2.tm2.tm2 header.navbar .logo{flex:1 1 0;order:0;width:auto;max-width:none;justify-content:flex-start}
 header.navbar .logo-swap .lg-cart{width:1.9rem;height:1.58rem}
 }
-@media(max-width:430px){
-body.tm2.tm2.tm2 header.navbar .cart-btn{font-size:0 !important;gap:0 !important;padding:0 !important;width:46px !important;min-width:46px !important;justify-content:center}
-body.tm2.tm2.tm2 header.navbar .cart-btn .tmc{width:22px;height:19px}
-body.tm2.tm2.tm2 header.navbar .cart-btn #cart-count{font-size:.68rem !important}
-}
+
 @media(min-width:769px){
 body.tm2.tm2.tm2 header.navbar .logo{justify-self:start;width:100%}
 header.navbar .logo-swap .lg-cart{width:2.6rem;height:2.17rem}
@@ -1608,8 +1604,13 @@ header.navbar .lg-ar{animation:none;clip-path:none}
 #quick-links-container.quick-links-scroll{display:flex !important;direction:rtl;overflow-x:auto !important;overflow-y:hidden !important;gap:14px !important;padding:6px 14px !important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;touch-action:pan-x pan-y}
 #quick-links-container.quick-links-scroll::-webkit-scrollbar{display:none}
 
-/* من غير فريم أبيض: الإطار البرتقالي بيظهر بس لما تدوس على الكارت أو يتحدد */
-html body.tm2.tm2.tm2 :is(#page-categories,#page-catalog,#page-home,#app,body) .fx-tile:active,body.tm2.tm2.tm2 :is(.bundle,.ab-stats>div,.ab-card,.ab-steps>div,.qr-card,.about-card,#card-channel,#card-web,#card-contact,.acct-info>div,.acct-actions.col .acct-link):active{border-color:var(--tm-or) !important}
 /* ترولي ماركت فيرجن 28 */
 #quick-links-container.quick-links-scroll.anim{scroll-behavior:auto}
 /* ترولي ماركت فيرجن 29 */
+/* من غير فريم أبيض: خط برتقالي رفيع (1px) بيظهر بس لحظة الضغط على الكارت */
+body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-card,.ab-steps>div,.qr-card,.about-card,.acct-info>div,.acct-actions.col .acct-link,.glass-icon,.cp,.search-capsule,.mag2-page,.quick-link-square):active{outline:1px solid var(--tm-or);outline-offset:-1px}
+@media(max-width:768px){
+body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
+body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
+}
+/* ترولي ماركت فيرجن 30 */
