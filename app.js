@@ -471,25 +471,52 @@ function buildSlider() {
     requestAnimationFrame(() => { goTo(reals()[0], false); setDots(); });   // نبدأ على أول شريحة حقيقية (بعد النسخة)
 }
 
-/* ---------- أقسام سريعة: شريط سحب عادي، أول قسم ثابت على اليمين، ولما توصل لآخره بترجع للأول لوحدها ---------- */
+/* ---------- أقسام سريعة: زي السلايدر (بتتحرك لوحدها قسم قسم ناحية الشمال بنفس اتجاه السلايدر، ودائرية من غير رجوع)، أول قسم على اليمين وتقدر تسحبها بإيدك ---------- */
 function renderQuickLinks() {
     const c = $('quick-links-container');
     if (!quickLinksData.length) { $('quick-wrap').style.display = 'none'; return; }
-    c.innerHTML = quickLinksData.map(item => {
+    const mk = (item, clone) => {
         const href = targetHref(item['نوع الاستهداف'], item['القسم_المستهدف']);
         const off = (window.TM_DISABLED || []).includes(str(item['القسم_المستهدف']));
-        return `<a class="quick-link-item${off ? ' off' : ''}" ${href ? `href="${esc(href)}"` : ''}><div class="quick-link-square"><img src="${esc(item['صورة'])}" alt="" draggable="false"></div><div class="quick-link-text">${esc(item['الاسم'])}</div>${off ? '<em class="ql-off">غير متوفر حاليًا</em>' : ''}</a>`;
-    }).join('');
+        return `<a class="quick-link-item${off ? ' off' : ''}"${clone ? ' data-clone="1" aria-hidden="true" tabindex="-1"' : ''} ${href ? `href="${esc(href)}"` : ''}><div class="quick-link-square"><img src="${esc(item['صورة'])}" alt="" draggable="false"></div><div class="quick-link-text">${esc(item['الاسم'])}</div>${off ? '<em class="ql-off">غير متوفر حاليًا</em>' : ''}</a>`;
+    };
+    c.innerHTML = quickLinksData.map(i => mk(i, false)).join('');
     if (c.__qlStop) c.__qlStop();
-    const ac = new AbortController(), sg = { signal: ac.signal, passive: true };
-    c.__qlStop = () => { clearTimeout(t); ac.abort(); };
-    let t = 0, down = false;
-    const atEnd = () => { const max = c.scrollWidth - c.clientWidth; return max > 8 && Math.abs(c.scrollLeft) >= max - 2; };
-    const back = !isNo(S['تحريك الأقسام السريعة']);
-    const check = (ms) => { clearTimeout(t); t = setTimeout(() => { if (back && !down && c.isConnected && atEnd()) c.scrollTo({ left: 0, behavior: 'smooth' }); }, ms); };
-    c.addEventListener('scroll', () => check(900), sg);
-    ['touchstart', 'pointerdown'].forEach(e => c.addEventListener(e, () => { down = true; clearTimeout(t); }, sg));
-    ['touchend', 'touchcancel', 'pointerup', 'pointercancel'].forEach(e => c.addEventListener(e, () => { down = false; check(900); }, sg));
+    c.scrollLeft = 0;
+    if (isNo(S['تحريك الأقسام السريعة'])) return;
+    const gen = window.__qlGen = (window.__qlGen || 0) + 1, ac = new AbortController(), sg = { signal: ac.signal, passive: true };
+    c.__qlStop = () => { clearTimeout(idleT); clearInterval(timer); ac.abort(); };
+    let idleT = 0, timer = 0, touching = false, pauseUntil = 0, P = 0, stepPx = 0;
+    requestAnimationFrame(() => {
+        if (window.__qlGen !== gen || !c.isConnected) return;
+        const real = Array.from(c.children), n = real.length;
+        if (n < 2) return;
+        const a = real[0].getBoundingClientRect(), b = real[1].getBoundingClientRect();
+        stepPx = Math.abs(a.left - b.left);                                   // عرض القسم + المسافة
+        const full = Math.abs(real[0].getBoundingClientRect().left - real[n - 1].getBoundingClientRect().left) + stepPx;
+        if (!stepPx || full <= c.clientWidth + 4) return;                     // كلهم ظاهرين: مفيش داعي للحركة
+        const k = Math.ceil(c.clientWidth / stepPx) + 1;
+        c.insertAdjacentHTML('beforeend', Array.from({ length: k }, (_, i) => mk(quickLinksData[i % n], true)).join(''));
+        P = full;
+        const settle = () => {
+            if (window.__qlGen !== gen || touching) return;
+            if (-c.scrollLeft >= P - 1) { c.classList.add('anim'); c.scrollLeft += P; void c.offsetWidth; c.classList.remove('anim'); }   // قفزة فورية لنفس الصورة
+        };
+        c.addEventListener('scroll', () => { clearTimeout(idleT); idleT = setTimeout(settle, 110); }, sg);
+        c.addEventListener('touchstart', () => { touching = true; pauseUntil = Date.now() + 3000; }, sg);
+        const tEnd = () => { touching = false; pauseUntil = Date.now() + 3000; clearTimeout(idleT); idleT = setTimeout(settle, 160); };
+        c.addEventListener('touchend', tEnd, sg); c.addEventListener('touchcancel', tEnd, sg);
+        c.addEventListener('wheel', () => { pauseUntil = Date.now() + 3000; }, sg);
+        c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) pauseUntil = Date.now() + 3000; }, sg);
+        const every = Math.max(2, num(S['مدة الانتقال بالثواني']) || 3) * 1000;
+        const inView = () => { const r = c.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
+        const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        timer = setInterval(() => {
+            if (window.__qlGen !== gen || !c.isConnected) return clearInterval(timer);
+            if (reduce || document.hidden || !inView() || touching || Date.now() < pauseUntil) return;
+            settle(); c.scrollBy({ left: -stepPx, behavior: 'smooth' });
+        }, every);
+    });
 }
 
 /* ---------- البنرات ---------- */
@@ -1102,9 +1129,9 @@ document.addEventListener('click', (e) => {
         const card = opt.closest('.product-card'); card.dataset.variant = opt.dataset.v;
         card.querySelector('.custom-select-display span').textContent = opt.dataset.v;
         if (opt.dataset.pr) {                                   // السعر بيتغيّر مع النوع
-            const pr = num(opt.dataset.pr), op = num(opt.dataset.op), pct = opt.dataset.pct, pc = card.querySelector('.price-container'), unit = pc ? pc.textContent.split(' / ').pop() : '';
+            const pr = num(opt.dataset.pr), op = num(opt.dataset.op), pct = opt.dataset.pct, pc = card.querySelector('.price-container');
             card.dataset.price = pr;
-            if (pc) pc.innerHTML = `${priceHtml(pr, op, op > pr)} / ${esc(unit)}`;
+            if (pc) pc.innerHTML = priceHtml(pr, op, op > pr);   // الكروت اللي ليها أنواع مفيهاش وحدة جنب السعر (الاسم والنوع كفاية)
             const bd = card.querySelector('.discount-badge:not(.tag-badge)');
             if (op > pr) { if (bd) bd.textContent = 'خصم ' + pct + '%'; else { const im = card.querySelector('.pimg'); if (im) im.insertAdjacentHTML('afterbegin', `<div class="discount-badge">خصم ${esc(pct)}%</div>`); } } else if (bd) bd.remove();
         }
@@ -1163,4 +1190,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 28 */
+/* ترولي ماركت فيرجن 29 */

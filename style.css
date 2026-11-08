@@ -1611,3 +1611,5 @@ header.navbar .lg-ar{animation:none;clip-path:none}
 /* من غير فريم أبيض: الإطار البرتقالي بيظهر بس لما تدوس على الكارت أو يتحدد */
 html body.tm2.tm2.tm2 :is(#page-categories,#page-catalog,#page-home,#app,body) .fx-tile:active,body.tm2.tm2.tm2 :is(.bundle,.ab-stats>div,.ab-card,.ab-steps>div,.qr-card,.about-card,#card-channel,#card-web,#card-contact,.acct-info>div,.acct-actions.col .acct-link):active{border-color:var(--tm-or) !important}
 /* ترولي ماركت فيرجن 28 */
+#quick-links-container.quick-links-scroll.anim{scroll-behavior:auto}
+/* ترولي ماركت فيرجن 29 */
