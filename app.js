@@ -126,7 +126,7 @@ const ICON_SCOOTER = '<svg class="tms" viewBox="0 0 48 36" aria-hidden="true"><g
 const CACHE_KEY = 'tm_data_v9', FRESH_MS = 10 * 60 * 1000;
 function readCache() { try { return JSON.parse(ls.get(CACHE_KEY)); } catch (e) { return null; } }
 function writeCache(obj) { try { ls.set(CACHE_KEY, JSON.stringify(obj)); } catch (e) {} }
-const XLSX_SRCS = ['xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'];
+const XLSX_SRCS = ['xlsx.full.min.js', 'xlsx.full.min.js?retry=1'];   // الملف محلي (الـCSP بتمنع أي CDN)
 function loadXLSXLib() {
     if (window.XLSX) return Promise.resolve();
     const tryLoad = (i) => new Promise((res, rej) => {
@@ -719,8 +719,10 @@ function performSearch() {
     const q = norm($('search-input').value); const box = $('search-results');
     if (!q) { box.innerHTML = ''; return; }
     const words = q.split(/\s+/).filter(Boolean);
-    if (!window.__sIdx || window.__sIdxN !== allProducts.length) { window.__sIdx = allProducts.map(p => ({ p, hay: norm(`${p['الاسم']} ${p['القسم']} ${variantsOf(p).map(v => v.n).join(' ')}`) })); window.__sIdxN = allProducts.length; }
-    let results = window.__sIdx.filter(e => words.every(w => e.hay.includes(w))).map(e => e.p);
+    if (!window.__sIdx || window.__sIdxN !== allProducts.length) { window.__sIdx = allProducts.map(p => ({ p, nm: norm(str(p['الاسم'])), hay: norm(`${p['الاسم']} ${p['القسم']} ${variantsOf(p).map(v => v.n).join(' ')}`) })); window.__sIdxN = allProducts.length; }
+    /* الترتيب: اسم المنتج بيبدأ بالكلمة (لبن جهينة) ثم كلمة في الاسم ثم جزء من كلمة (بالبندق) ثم الباقي (قسم أو نوع) */
+    const rank = (e) => words.reduce((s, w) => s + (e.nm.startsWith(w) ? 0 : e.nm.split(/\s+/).some(t => t.startsWith(w)) ? 1 : e.nm.includes(w) ? 2 : 3), 0);
+    let results = window.__sIdx.filter(e => words.every(w => e.hay.includes(w))).map(e => ({ e, r: rank(e) })).sort((x, y) => x.r - y.r).map(x => x.e.p);
     if (!results.length) {   // مفيش نتيجة بالظبط: نسامح في غلطة حرف واحد (برتقان ← برتقال)
         const near = (w, t) => { if (Math.abs(w.length - t.length) > 1) return false; let i = 0, j = 0, e = 0; while (i < w.length && j < t.length) { if (w[i] === t[j]) { i++; j++; continue; } if (++e > 1) return false; if (w.length > t.length) i++; else if (w.length < t.length) j++; else { i++; j++; } } return e + (w.length - i) + (t.length - j) <= 1; };
         results = window.__sIdx.filter(e => { const toks = e.hay.split(/\s+/); return words.every(w => e.hay.includes(w) || (w.length >= 4 && toks.some(t => near(w, t)))); }).map(e => e.p);
@@ -1190,4 +1192,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 30 */
+/* ترولي ماركت فيرجن 31 */

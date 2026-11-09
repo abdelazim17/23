@@ -1218,8 +1218,8 @@ header.navbar::after,header.navbar::before{display:none !important}
 .cart-item{background:#F4F3EF !important;border:1px solid var(--ln) !important}
 input,select,textarea{background:rgba(255,255,255,.72) !important;color:var(--text-color,#3B2410) !important;border:1.5px solid rgba(222,87,24,.18) !important}
 input:focus,select:focus,textarea:focus{border-color:var(--primary,#DE5718) !important;outline:none !important}
-@keyframes lgClipA{0%,4%{clip-path:inset(0 0 0 100%)}44%,54%{clip-path:inset(0 0 0 0)}94%,100%{clip-path:inset(0 0 0 100%)}}
-@keyframes lgClipE{0%,4%{clip-path:inset(0 0 0 0)}44%,54%{clip-path:inset(0 100% 0 0)}94%,100%{clip-path:inset(0 0 0 0)}}
+@keyframes lgClipA{0%,2%{clip-path:inset(0 0 0 100%)}48%,52%{clip-path:inset(0 0 0 0)}98%,100%{clip-path:inset(0 0 0 100%)}}
+@keyframes lgClipE{0%,2%{clip-path:inset(0 0 0 0)}48%,52%{clip-path:inset(0 100% 0 0)}98%,100%{clip-path:inset(0 0 0 0)}}
 .fx-hero .tg,.fx-hero .tg span,.fx-hero .tg b,.fx-hero .fx-trust *{color:var(--text-color,#3B2410) !important}
 body{background:#fff !important}
 .ab-card::before,.ab-steps i{color:var(--primary,#DE5718) !important;box-shadow:none !important}
@@ -1393,7 +1393,7 @@ body:not(.dark-mode) .fx-footer .ft-soc a:hover i{color:var(--or) !important}
 body:not(.dark-mode) .fx-footer .ft-copy,body:not(.dark-mode) .fx-footer hr{border-color:var(--mg-ln) !important}
 body:not(.dark-mode) .fx-capsule input,body:not(.dark-mode) .fx-cap input,body:not(.dark-mode) .search-capsule input{background:transparent !important}
 .fx-capsule-wrap,.fx-capwrap,.search-capsule-wrap,#fx-capsule-wrap{background:transparent !important;box-shadow:none !important;border:0 !important}
-@keyframes lgCart2{0%,4%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(-1)}44%{transform:translate(-50%,-50%) scaleX(-1)}46%,54%{transform:translate(-50%,-50%) scaleX(1)}94%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(1)}96%,100%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(-1)}}
+@keyframes lgCart2{0%,2%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(-1)}48%{transform:translate(-50%,-50%) scaleX(-1)}50%,52%{transform:translate(-50%,-50%) scaleX(1)}98%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(1)}100%{transform:translate(calc(-50% + var(--dx,0px)),-50%) scaleX(-1)}}
 
 body:not(.dark-mode) .fx-tile .fx-cico-i,body:not(.dark-mode) .fx-tile:hover .fx-cico-i,body:not(.dark-mode) .fx-tile .fx-cico{background:transparent !important;color:var(--ink) !important;border:0 !important;box-shadow:none !important;outline:0 !important}
 body:not(.dark-mode) .fx-tile:hover{background:#fff !important;border-color:var(--mg) !important}
@@ -1411,7 +1411,7 @@ body:not(.dark-mode) .search-capsule{color:#6b7468 !important}
 .lg-cart circle.cartb{fill:#4C8B38;stroke:none}
 .lg-cart .cartb[fill-opacity]{fill:#4C8B38}
 .lg-cart .man{animation:manCol var(--swap,9s) ease-in-out infinite;animation-delay:calc(var(--swap,9s) / -2)}
-@keyframes manColD{0%,10%{color:#FF8A3D}14%,44%{color:#F4F3EF}46%,54%{color:#F4F3EF}58%,100%{color:#FF8A3D}}
+@keyframes manColD{0%,10%{color:#FF8A3D}14%,52%{color:#F4F3EF}56%,100%{color:#FF8A3D}}
 .lg-cart .lgA{animation:legA .5s steps(1,end) infinite}
 .lg-cart .lgB{animation:legB .5s steps(1,end) infinite}
 @keyframes legA{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
@@ -1523,7 +1523,7 @@ body.tm2.tm2.tm2 .fx-footer .ft-soc a:hover{border-color:var(--tm-or) !important
 body.tm2.tm2.tm2 .fx-footer .ft-soc a:hover i{color:var(--tm-ofl) !important}
 body.tm2.tm2.tm2 .wa-float{background:var(--tm-or) !important;color:var(--tm-ofl) !important;border:0 !important}
 body.tm2.tm2.tm2 .wa-float i,body.tm2.tm2.tm2 .wa-float svg{color:var(--tm-ofl) !important}
-@keyframes manCol{0%,10%{color:#DE5718}14%,44%{color:#5A3114}46%,54%{color:#5A3114}58%,100%{color:#DE5718}}
+@keyframes manCol{0%,10%{color:#DE5718}14%,52%{color:#5A3114}56%,100%{color:#DE5718}}
 :root{--tm-gr:#5A3114;--tm-gr2:#7A4A28;--ticker-bg:#5A3114}
 @media(max-width:768px){
 body.tm2.tm2.tm2 header.navbar{gap:8px !important;padding:0 10px !important}
@@ -1613,4 +1613,4 @@ body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-
 body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
 body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
 }
-/* ترولي ماركت فيرجن 30 */
+/* ترولي ماركت فيرجن 31 */

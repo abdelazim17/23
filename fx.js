@@ -180,7 +180,10 @@ function fitLogo(){var sw=document.querySelector('header.navbar .logo-swap'),ar=
   var G=12,aw=sw.clientWidth,ea=em(ar),ee=em(en),h=parseFloat(getComputedStyle(ct).width)/2;if(!aw||!ea||!ee||!h)return;
   var cap=window.matchMedia('(max-width:768px)').matches?30:42,W=Math.max(60,Math.min(aw-2*(2*h+G),cap*ea)),L=(aw-W)/2,R=(aw+W)/2,pl=L-G-h,pr=R+G+h;
   function set(k,v){if(sw.style.getPropertyValue(k)!==v)sw.style.setProperty(k,v)}
-  set('--fa',(W/ea).toFixed(2)+'px');set('--fe',(W/ee).toFixed(2)+'px');set('--pl',pl.toFixed(1)+'px');set('--pr',pr.toFixed(1)+'px');set('--dx',(pr-pl).toFixed(1)+'px')}
+  set('--fa',(W/ea).toFixed(2)+'px');set('--fe',(W/ee).toFixed(2)+'px');
+  var bb=sw.getBoundingClientRect(),ra=document.createRange(),re=document.createRange();ra.selectNodeContents(ar);re.selectNodeContents(en);   /* قياس فعلي بعد تثبيت الأحجام: كل طرف من حافة كلمته */
+  var A=ra.getBoundingClientRect(),E=re.getBoundingClientRect();pl=A.left-bb.left-G-h;pr=E.right-bb.left+G+h;
+  set('--pl',pl.toFixed(1)+'px');set('--pr',pr.toFixed(1)+'px');set('--dx',(pr-pl).toFixed(1)+'px')}
 var lgW=0;window.addEventListener('resize',debounced(function(){var s=document.querySelector('header.navbar .logo-swap');if(s&&Math.abs(s.clientWidth-lgW)>1){lgW=s.clientWidth;fitLogo()}}));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitLogo);window.addEventListener('load',function(){setTimeout(fitLogo,400);setTimeout(fitLogo,1800)});
 /* كبسولة البحث (من settings: شكل البحث) */
@@ -193,4 +196,4 @@ function boot(){fitLogo();arm();vids();hero();capsule();tick();mo.observe(docume
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 var n=0,iv=setInterval(function(){hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 30 */
+/* ترولي ماركت فيرجن 31 */
