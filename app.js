@@ -485,8 +485,8 @@ function renderQuickLinks() {
     c.scrollLeft = 0;
     if (isNo(S['تحريك الأقسام السريعة'])) return;
     const gen = window.__qlGen = (window.__qlGen || 0) + 1, ac = new AbortController(), sg = { signal: ac.signal, passive: true };
-    c.__qlStop = () => { clearTimeout(idleT); clearInterval(timer); ac.abort(); };
-    let idleT = 0, timer = 0, touching = false, pauseUntil = 0, P = 0, stepPx = 0;
+    c.__qlStop = () => { clearTimeout(idleT); cancelAnimationFrame(raf); ac.abort(); };
+    let idleT = 0, raf = 0, touching = false, pauseUntil = 0, P = 0, stepPx = 0;
     requestAnimationFrame(() => {
         if (window.__qlGen !== gen || !c.isConnected) return;
         const real = Array.from(c.children), n = real.length;
@@ -507,15 +507,25 @@ function renderQuickLinks() {
         const tEnd = () => { touching = false; pauseUntil = Date.now() + 3000; clearTimeout(idleT); idleT = setTimeout(settle, 160); };
         c.addEventListener('touchend', tEnd, sg); c.addEventListener('touchcancel', tEnd, sg);
         c.addEventListener('wheel', () => { pauseUntil = Date.now() + 3000; }, sg);
-        c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) pauseUntil = Date.now() + 3000; }, sg);
-        const every = Math.max(0.8, num(S['مدة حركة الأقسام السريعة بالثواني']) || 1.5) * 1000;
+        let hovering = false;
+        c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) hovering = true; }, sg);
+        c.addEventListener('mouseleave', () => { hovering = false; pauseUntil = Date.now() + 800; }, sg);
+        /* حركة مستمرة بسرعة ثابتة (من غير وقوف): قسم واحد كل «مدة حركة الأقسام السريعة» ثانية، واللفّة دايرية */
+        const secPerTile = Math.max(0.4, num(S['مدة حركة الأقسام السريعة بالثواني']) || 1.2);
+        const speed = stepPx / secPerTile;                                    // بكسل في الثانية
         const inView = () => { const r = c.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
         const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        timer = setInterval(() => {
-            if (window.__qlGen !== gen || !c.isConnected) return clearInterval(timer);
-            if (reduce || document.hidden || !inView() || touching || Date.now() < pauseUntil) return;
-            settle(); c.scrollBy({ left: -stepPx, behavior: 'smooth' });
-        }, every);
+        let pos = 0, last = 0, synced = false;
+        const frame = (ts) => {
+            if (window.__qlGen !== gen || !c.isConnected) return;
+            raf = requestAnimationFrame(frame);
+            const dt = Math.min(0.1, (ts - (last || ts)) / 1000); last = ts;
+            if (reduce || document.hidden || !inView() || touching || hovering || Date.now() < pauseUntil) { synced = false; return; }
+            if (!synced) { pos = Math.max(0, -c.scrollLeft); synced = true; }   // كمّل من المكان اللي الزبون وقّف عنده
+            pos += speed * dt; if (pos >= P) pos -= P;
+            c.scrollLeft = -pos;
+        };
+        raf = requestAnimationFrame(frame);
     });
 }
 
@@ -1192,4 +1202,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 34 */
+/* ترولي ماركت فيرجن 35 */

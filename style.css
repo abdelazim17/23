@@ -1449,7 +1449,7 @@ body.tm2.tm2.tm2 .fx-hero-link{display:block}
 body.tm2.tm2.tm2 .fx-hero-img img{width:100%;height:auto;aspect-ratio:16/9;max-height:90vh;object-fit:cover;object-position:center bottom}
 @media(max-width:700px){
 body.tm2.tm2.tm2 .fx-hero-img img{height:auto;aspect-ratio:4/5;max-height:76vh}
-body.tm2.tm2.tm2 .fx-hero.fx-hero-img{border-radius:0 0 24px 24px !important}
+body.tm2.tm2.tm2 .fx-hero.fx-hero-img{border-radius:0 !important}
 }
 body.tm2.tm2.tm2 .fx-tile{background:var(--g-bg) !important;border:1.5px solid transparent !important;box-shadow:var(--g-sh) !important;border-radius:20px !important;color:var(--tm-br) !important;transition:border-color .18s,transform .18s,background .18s}
 body.tm2.tm2.tm2 .fx-tile:nth-child(n){border-color:var(--tm-ln) !important}
@@ -1566,7 +1566,7 @@ body.tm2.tm2.tm2 header.navbar .actions-container{justify-self:end !important}
 }
 body.tm2.tm2.tm2 :is(h1,h2,h3,h4,.section-header h3,.fx-tile span,.price,.current-price,.price-container strong,.btn-primary,.add-to-cart-btn,.checkout-btn,.cart-btn,.acct-main,.nav-links a,.mobile-top-nav a,.ban-ov b,.ban-ov em,.quick-link-text,.cat-filter-btn,.in-cart-badge,.discount-badge,.bundle-name,.cart-header h3,.ab-stats b,.fx-footer h3,.fx-footer h4,.mag-badge,.clear-cart-btn,.ci-qty span,.cp){font-family:'Cairo',sans-serif !important}
 @media(min-width:701px){
-body.tm2.tm2.tm2 .fx-hero.fx-hero-img{width:min(1200px,calc(100% - 28px)) !important;border-radius:30px !important}
+body.tm2.tm2.tm2 .fx-hero.fx-hero-img{width:min(1200px,calc(100% - 28px)) !important}
 }
 html body.tm2.tm2.tm2 :is(#page-categories,#page-catalog,#page-home,#app,body) .fx-tile:not(.on){background:var(--g-bg) !important;border:1.5px solid transparent !important;box-shadow:var(--g-sh) !important}
 html body.tm2.tm2.tm2 :is(#page-categories,#page-catalog,#page-home,#app,body) .fx-tile:not(.on):hover{background:rgba(255,255,255,.88) !important}
@@ -1575,12 +1575,7 @@ body.tm2.tm2.tm2 .fx-hero.fx-hero-img{margin:12px auto 4px !important;background
 }
 body.tm2.tm2.tm2 .fx-hero.fx-hero-img,body.tm2.tm2.tm2 .fx-hero-link{background:transparent !important}
 body.tm2.tm2.tm2 .fx-hero.fx-hero-img{border-radius:0 !important}
-/* تلاشي آخر 22% من الهيرو على الموبايل، وآخر 11% على الكمبيوتر (تحت) */
-body.tm2.tm2.tm2 .fx-hero-img img{display:block;-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 78%,rgba(0,0,0,.75) 86%,rgba(0,0,0,.35) 94%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 78%,rgba(0,0,0,.75) 86%,rgba(0,0,0,.35) 94%,transparent 100%)}
-@media(min-width:701px){
-body.tm2.tm2.tm2 .fx-hero-img img{border-radius:30px 30px 0 0}
-body.tm2.tm2.tm2 .fx-hero-img img{-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 89%,rgba(0,0,0,.6) 94%,rgba(0,0,0,.25) 97.5%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 89%,rgba(0,0,0,.6) 94%,rgba(0,0,0,.25) 97.5%,transparent 100%)}
-}
+body.tm2.tm2.tm2 .fx-hero-img img{display:block;border-radius:0}
 .mobile-top-nav{padding-bottom:env(safe-area-inset-bottom)}
 
 /* ===== اللوجو (كتلة واحدة): الحجم ثابت من --fa/--fe اللي بيحسبهم fx.js مرة واحدة، والمتحرك الوحيد هو العربة ===== */
@@ -1618,4 +1613,4 @@ body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-
 body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
 body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
 }
-/* ترولي ماركت فيرجن 34 */
+/* ترولي ماركت فيرجن 35 */
