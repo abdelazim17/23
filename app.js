@@ -80,6 +80,7 @@ function safeLink(v) {
 function sanitizeData(data) {
     Object.keys(data.sheets).forEach(n => data.sheets[n].forEach(r => {
         if ('صورة' in r) r['صورة'] = safeSrc(r['صورة']);
+        for (let i = 1; i <= 10; i++) { const k = 'صورة نوع ' + i; if (k in r) r[k] = safeSrc(r[k]); }
         if ('الإعداد' in r && 'القيمة' in r) {
             const k = str(r['الإعداد']);
             if (/^(صورة|أيقونة الموقع)/.test(k)) r['القيمة'] = safeSrc(r['القيمة']);
@@ -141,11 +142,30 @@ function loadXLSXLib() {
 async function fetchFresh() {
     await loadXLSXLib();
     const v = Math.floor(Date.now() / 300000);
-    const r = await fetch('data.xlsx?v=' + v);
+    const [r, rp] = await Promise.all([fetch('data.xlsx?v=' + v), fetch('prices.xlsx?v=' + v).catch(() => null)]);
     if (!r.ok) throw new Error('data.xlsx not found');
+    const toSheets = (wb) => { const s = {}; wb.SheetNames.forEach(n => { s[n] = XLSX.utils.sheet_to_json(wb.Sheets[n]); }); return s; };
     const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
-    const sheets = {}; wb.SheetNames.forEach(n => { sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n]); });
-    return { t: Date.now(), names: wb.SheetNames, sheets };   // ملف واحد: data.xlsx
+    const sheets = toSheets(wb), out = { t: Date.now(), names: wb.SheetNames, sheets, pw: { missing: [], orphan: [] } };
+    if (rp && rp.ok) mergePrices(sheets, toSheets(XLSX.read(await rp.arrayBuffer(), { type: 'array' })), out.pw);
+    else if (!wb.SheetNames.some(n => (sheets[n][0] || {})['السعر الأساسي'] !== undefined)) throw new Error('prices.xlsx not found');   // مفيش prices.xlsx ومفيش أسعار في data.xlsx
+    return out;
+}
+/* دمج الأسعار: ملف prices.xlsx فيه (الاسم + السعر الأساسي + بعد الخصم + متوفر + عروض اليوم + شارة + نوع/سعر/صورة نوع 1..10) لكل شيت قسم. بيتربطوا بالاسم جوه نفس الشيت، وبعد الدمج الباقي شغال زي ما هو */
+const normName = (s) => String(s == null ? '' : s).normalize('NFC').replace(/\s+/g, ' ').trim();
+function mergePrices(sheets, psheets, pw) {
+    Object.keys(psheets).forEach(n => {
+        if (!sheets[n]) { if ((psheets[n] || []).some(r => normName(r['الاسم']))) pw.orphan.push(`شيت «${n}» في prices.xlsx مالوش شيت بنفس الاسم في data.xlsx`); return; }
+        const byName = {}; (psheets[n] || []).forEach(r => { const k = normName(r['الاسم']); if (k && !byName[k]) byName[k] = r; });
+        const used = new Set();
+        sheets[n].forEach(r => {
+            const k = normName(r['الاسم']); if (!k) return;
+            const pr = byName[k];
+            if (!pr) { pw.missing.push(`${n} — ${k}`); return; }
+            used.add(k); Object.keys(pr).forEach(c => { if (c !== 'الاسم') r[c] = pr[c]; });
+        });
+        Object.keys(byName).forEach(k => { if (!used.has(k)) pw.orphan.push(`«${k}» في شيت «${n}» في prices.xlsx مش موجود في data.xlsx`); });
+    });
 }
 /* تحديث صامت: من غير أي رسالة للزبون. بيتطبق فوراً لو الزبون في أول الصفحة والسلة فاضية، وإلا في الزيارة الجاية */
 function canReload() {
@@ -258,14 +278,17 @@ async function runCheck(data) {
     catSheets.forEach(c => rowsOf(c).forEach((r, i) => {
         const nm = str(r['الاسم']); if (!nm) return;
         const w = `${c} — ${nm}`, a = num(r['السعر الأساسي']), d = num(r['السعر بعد الخصم']);
-        if (a <= 0 && d <= 0) bad.push(`${w}: مفيش سعر`);
+        if (a <= 0 && d <= 0) { if (!((data.pw || {}).missing || []).includes(`${c} — ${nm}`)) bad.push(`${w}: مفيش سعر`); }
         else if (d > 0 && a > 0 && d >= a) warn.push(`${w}: «السعر بعد الخصم» (${d}) مش أقل من الأساسي (${a}) فالخصم مش هيظهر`);
         if (!str(r['الوحدة'])) warn.push(`${w}: الوحدة فاضية`);
         for (let i = 1; i <= MAXV; i++) { const vn = str(r['نوع ' + i]), vp = num(r['سعر ' + i]); if (!vn && vp) bad.push(`${w}: «سعر ${i}» مكتوب من غير «نوع ${i}»`); else if (vn && !vp && !num(r['السعر الأساسي'])) bad.push(`${w}: «نوع ${i}» من غير سعر ومفيش سعر أساسي`); }
         if (variantsOf(r).length && num(r['السعر بعد الخصم']) && num(r['السعر بعد الخصم']) < num(r['السعر الأساسي'])) warn.push(`${w}: «${str(r['الاسم'])}» عليه أنواع، فالخصم مش بيتطبق عليها (اكتب سعر كل نوع بعد الخصم)`);
         if (seen[nm]) bad.push(`الاسم «${nm}» مكرر (في ${seen[nm]} و${c}) — لازم يكون الاسم فريد`); else seen[nm] = c;
         if (str(r['صورة'])) imgs.add(str(r['صورة']));
+        for (let i = 1; i <= MAXV; i++) { const vi = str(r['صورة نوع ' + i]); if (vi) { if (!str(r['نوع ' + i])) warn.push(`${w}: «صورة نوع ${i}» مكتوبة من غير «نوع ${i}»`); else imgs.add(vi); } }
     }));
+    ((data.pw || {}).missing || []).forEach(x => bad.push(`${x}: مالوش سطر في prices.xlsx (لازم نفس الاسم بالظبط) — مفيش سعر ليه`));
+    ((data.pw || {}).orphan || []).forEach(x => warn.push(x));
     bundlesData.concat(rowsOf('باقات العروض').filter(r => str(r['الباقة']))).forEach(r => parseBundleNames(r).forEach(x => { if (!seen[x]) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مش موجود في أي قسم ظاهر`); }));
     if (!allOffers.length) warn.push('مفيش أي منتج في «عروض اليوم» (اكتب نعم في عمود عروض اليوم)');
     if (!getCleanPhone(S['رقم الواتساب'])) bad.push('رقم الواتساب فاضي في الإعدادات — الطلبات مش هتتبعت');
@@ -627,11 +650,11 @@ async function shareWebsite() {
 }
 
 /* ---------- المنتجات ---------- */
-/* الأنواع: في كل شيت منتجات أعمدة «نوع 1» و«سعر 1» ... لحد «نوع 10» و«سعر 10». النوع من غير سعر بياخد السعر الأساسي. مفيش أنواع = مفيش قايمة */
+/* الأنواع: (من prices.xlsx) أعمدة «نوع 1» و«سعر 1» و«صورة نوع 1» ... لحد 10. صورة النوع بتتحمّل بس لما الزبون يختاره. النوع من غير سعر بياخد السعر الأساسي. مفيش أنواع = مفيش قايمة */
 const MAXV = 10;
 function variantsOf(p) {
     const vs = [];
-    for (let i = 1; i <= MAXV; i++) { const n = str(p['نوع ' + i]); if (!n) continue; const pr = num(p['سعر ' + i]); vs.push(pr > 0 ? { n, p: pr } : { n }); }
+    for (let i = 1; i <= MAXV; i++) { const n = str(p['نوع ' + i]); if (!n) continue; const pr = num(p['سعر ' + i]), im = str(p['صورة نوع ' + i]); const o = pr > 0 ? { n, p: pr } : { n }; if (im) o.i = im; vs.push(o); }
     return vs;
 }
 function priceInfo(p, vn) {
@@ -653,14 +676,16 @@ function productHTML(p) {
     const { oldP, hasOffer, price, pct } = priceInfo(p);
     const c = esc(cur());
     const priceHTML = priceHtml(price, oldP, hasOffer);
-    const vInfo = variantsOf(p).map(v => Object.assign({ n: v.n }, priceInfo(p, v.n))), variants = vInfo.map(v => v.n);
+    const vInfo = variantsOf(p).map(v => Object.assign({ n: v.n, i: v.i || '' }, priceInfo(p, v.n))), variants = vInfo.map(v => v.n);
+    const mainImg = str(p['صورة']) || str(S['صورة المنتج الافتراضية']) || (window.tmFallbackSrc && window.tmFallbackSrc(p['الاسم'], p['القسم'])) || PLACEHOLDER;
+    const firstImg = (vInfo[0] && vInfo[0].i) || mainImg;   // نوع 1 هو الافتراضي: لو ليه صورة بتظهر من الأول
     const multi = new Set(vInfo.map(v => v.price)).size > 1;   // لو الأسعار مختلفة نكتب السعر جنب كل نوع في القايمة
-    const variantHTML = variants.length ? `<div class="custom-select-wrapper"><div class="custom-select-display"><span>${esc(variants[0])}</span></div><div class="custom-select-options">${vInfo.map(v => `<div class="custom-option" data-v="${esc(v.n)}" data-pr="${v.price}" data-op="${v.hasOffer ? v.oldP : ''}" data-pct="${v.pct}">${esc(v.n)}${multi ? ` <small>— ${fmt(v.price)} ${c}</small>` : ''}</div>`).join('')}</div></div>` : '';
+    const variantHTML = variants.length ? `<div class="custom-select-wrapper"><div class="custom-select-display"><span>${esc(variants[0])}</span></div><div class="custom-select-options">${vInfo.map(v => `<div class="custom-option" data-v="${esc(v.n)}" data-pr="${v.price}" data-op="${v.hasOffer ? v.oldP : ''}" data-pct="${v.pct}"${v.i ? ` data-img="${esc(v.i)}"` : ''}>${esc(v.n)}${multi ? ` <small>— ${fmt(v.price)} ${c}</small>` : ''}</div>`).join('')}</div></div>` : '';
     const sold = !!p.soldOut;
     const badge = (hasOffer ? `<div class="discount-badge">خصم ${pct}%</div>` : '') + (str(p['شارة']) ? `<div class="discount-badge tag-badge${hasOffer ? '' : ' tag-solo'}">${esc(p['شارة'])}</div>` : '');
     const cc = catColorOf(p);
     const inCart = cart.some(i => i.base === str(p['الاسم']));
-    return `<div class="product-card${sold ? ' sold-out' : ''}${inCart ? ' in-cart' : ''}"${cc ? ` style="--cc:${esc(cc)}"` : ''} data-name="${esc(p['الاسم'])}" data-price="${price}" data-variant="${esc(variants[0] || '')}" data-frac="${fracOf(p) ? 1 : 0}"><div class="pimg">${badge}<div class="in-cart-badge"><i class="fas fa-check"></i> مضاف</div><img src="${esc(str(p['صورة']) || str(S['صورة المنتج الافتراضية']) || (window.tmFallbackSrc && window.tmFallbackSrc(p['الاسم'], p['القسم'])) || PLACEHOLDER)}" class="product-img" alt="${esc(p['الاسم'])}" loading="lazy" decoding="async"></div><div class="product-title">${esc(p['الاسم'])}</div>${variantHTML}<div class="price-container">${priceHTML}${variants.length ? '' : ' / ' + esc(p['الوحدة'] || 'وحدة')}</div><div class="card-actions"><div class="qty-controls"><button class="qty-btn" data-q="1" aria-label="زيادة">+</button><input type="number" class="qty-input" value="1" step="any" readonly><button class="qty-btn" data-q="-1" aria-label="نقص">-</button></div><button class="add-to-cart-btn"${sold ? ' disabled' : ''}>${sold ? 'غير متوفر' : esc(str(S['نص زر إضافة للسلة']) || 'إضافة للسلة')}</button></div></div>`;
+    return `<div class="product-card${sold ? ' sold-out' : ''}${inCart ? ' in-cart' : ''}"${cc ? ` style="--cc:${esc(cc)}"` : ''} data-name="${esc(p['الاسم'])}" data-price="${price}" data-variant="${esc(variants[0] || '')}" data-frac="${fracOf(p) ? 1 : 0}" data-img0="${esc(mainImg)}"><div class="pimg">${badge}<div class="in-cart-badge"><i class="fas fa-check"></i> مضاف</div><img src="${esc(firstImg)}" class="product-img" alt="${esc(p['الاسم'])}" loading="lazy" decoding="async"></div><div class="product-title">${esc(p['الاسم'])}</div>${variantHTML}<div class="price-container">${priceHTML}${variants.length ? '' : ' / ' + esc(p['الوحدة'] || 'وحدة')}</div><div class="card-actions"><div class="qty-controls"><button class="qty-btn" data-q="1" aria-label="زيادة">+</button><input type="number" class="qty-input" value="1" step="any" readonly><button class="qty-btn" data-q="-1" aria-label="نقص">-</button></div><button class="add-to-cart-btn"${sold ? ' disabled' : ''}>${sold ? 'غير متوفر' : esc(str(S['نص زر إضافة للسلة']) || 'إضافة للسلة')}</button></div></div>`;
 }
 const gridHTML = (list) => `<div class="products-grid">${list.map(productHTML).join('')}</div>`;
 function sorted(list) {
@@ -1140,6 +1165,8 @@ document.addEventListener('click', (e) => {
     if (opt) {
         const card = opt.closest('.product-card'); card.dataset.variant = opt.dataset.v;
         card.querySelector('.custom-select-display span').textContent = opt.dataset.v;
+        const pim = card.querySelector('.product-img'), want = opt.dataset.img || card.dataset.img0;   // صورة النوع بتتحمّل دلوقتي بس (مش قبل كده)
+        if (pim && want && pim.getAttribute('src') !== want) { delete pim.dataset.fb; pim.src = want; }
         if (opt.dataset.pr) {                                   // السعر بيتغيّر مع النوع
             const pr = num(opt.dataset.pr), op = num(opt.dataset.op), pct = opt.dataset.pct, pc = card.querySelector('.price-container');
             card.dataset.price = pr;
@@ -1202,4 +1229,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 35 */
+/* ترولي ماركت فيرجن 36 */
