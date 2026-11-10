@@ -1572,7 +1572,7 @@ body.tm2.tm2.tm2 .fx-hero.fx-hero-img{margin:12px auto 4px !important;background
 }
 body.tm2.tm2.tm2 .fx-hero.fx-hero-img,body.tm2.tm2.tm2 .fx-hero-link{background:transparent !important}
 body.tm2.tm2.tm2 .fx-hero.fx-hero-img{border-radius:0 !important}
-body.tm2.tm2.tm2 .fx-hero-img img{display:block;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V93Q87.5 99 75 93T50 93T25 93T0 93Z'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 0H100V93Q87.5 99 75 93T50 93T25 93T0 93Z'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+body.tm2.tm2.tm2 .fx-hero-img img{display:block;-webkit-mask-image:linear-gradient(to bottom,#000 0,#000 78%,rgba(0,0,0,.75) 86%,rgba(0,0,0,.35) 94%,transparent 100%);mask-image:linear-gradient(to bottom,#000 0,#000 78%,rgba(0,0,0,.75) 86%,rgba(0,0,0,.35) 94%,transparent 100%)}
 @media(min-width:701px){
 body.tm2.tm2.tm2 .fx-hero-img img{border-radius:30px 30px 0 0}
 }
@@ -1613,4 +1613,4 @@ body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-
 body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
 body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
 }
-/* ترولي ماركت فيرجن 31 */
+/* ترولي ماركت فيرجن 33 */
