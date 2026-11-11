@@ -156,15 +156,16 @@ const normName = (s) => String(s == null ? '' : s).normalize('NFC').replace(/\s+
 function mergePrices(sheets, psheets, pw) {
     Object.keys(psheets).forEach(n => {
         if (!sheets[n]) { if ((psheets[n] || []).some(r => normName(r['الاسم']))) pw.orphan.push(`شيت «${n}» في prices.xlsx مالوش شيت بنفس الاسم في data.xlsx`); return; }
-        const byName = {}; (psheets[n] || []).forEach(r => { const k = normName(r['الاسم']); if (k && !byName[k]) byName[k] = r; });
-        const used = new Set();
+        // نفس الاسم ممكن يتكرر (بيك رولز بسعر 15 وبسعر 10): السطر رقم 1 في data.xlsx بياخد السطر رقم 1 بنفس الاسم في prices.xlsx، والتاني بالتاني، وهكذا
+        const byName = {}; (psheets[n] || []).forEach(r => { const k = normName(r['الاسم']); if (k) (byName[k] = byName[k] || []).push(r); });
+        const used = {};
         sheets[n].forEach(r => {
             const k = normName(r['الاسم']); if (!k) return;
-            const pr = byName[k];
-            if (!pr) { pw.missing.push(`${n} — ${k}`); return; }
-            used.add(k); Object.keys(pr).forEach(c => { if (c !== 'الاسم') r[c] = pr[c]; });
+            const i = used[k] = (used[k] || 0) + 1, pr = (byName[k] || [])[i - 1];
+            if (!pr) { pw.missing.push(i > 1 || (byName[k] || []).length ? `${n} — ${k} (رقم ${i})` : `${n} — ${k}`); return; }
+            Object.keys(pr).forEach(c => { if (c !== 'الاسم') r[c] = pr[c]; });
         });
-        Object.keys(byName).forEach(k => { if (!used.has(k)) pw.orphan.push(`«${k}» في شيت «${n}» في prices.xlsx مش موجود في data.xlsx`); });
+        Object.keys(byName).forEach(k => { const u = used[k] || 0; if (byName[k].length > u) pw.orphan.push(u ? `«${k}» مكتوب ${byName[k].length} مرات في شيت «${n}» في prices.xlsx وفي data.xlsx ${u} بس` : `«${k}» في شيت «${n}» في prices.xlsx مش موجود في data.xlsx`); });
     });
 }
 /* تحديث صامت: من غير أي رسالة للزبون. بيتطبق فوراً لو الزبون في أول الصفحة والسلة فاضية، وإلا في الزيارة الجاية */
@@ -221,7 +222,8 @@ function initFromData(data) {
 
     let n = 0;
     const showSold = isYes(S['إظهار المنتجات غير المتوفرة']);
-    const clean = (rows, prefix, off) => rows.filter(r => str(r['الاسم']) && (off || showSold || !isNo(r['متوفر']))).map(r => ({ ...r, soldOut: !!off || isNo(r['متوفر']), id: prefix + (n++) }));
+    const hasPrice = r => num(r['السعر الأساسي']) > 0 || num(r['السعر بعد الخصم']) > 0 || variantsOf(r).some(v => v.p > 0);   // منتج من غير أي سعر ما يظهرش للزبون (ولا يظهر «0 ج»)
+    const clean = (rows, prefix, off) => rows.filter(r => str(r['الاسم']) && hasPrice(r) && (off || showSold || !isNo(r['متوفر']))).map(r => ({ ...r, soldOut: !!off || isNo(r['متوفر']), id: prefix + (n++) }));
     // التحكم في الأقسام من شيت "إدارة الأقسام": إخفاء وترتيب (الأقسام الجديدة اللي مش مكتوبة هناك بتظهر في الآخر)
     const hideCats = new Set(), offCats = new Set(), blockedNames = new Set(), catOrder = {}; catMeta = {};
     rowsOf('إدارة الأقسام').forEach(r => { const k = str(r['القسم']); if (!k) return; { const vis = str(r['ظاهر']); if (/غير متوفر|نفد|موقوف|متوقف/.test(vis)) offCats.add(k); else if (isNo(vis)) hideCats.add(k); } if (num(r['الترتيب'])) catOrder[k] = num(r['الترتيب']); catMeta[k] = { color: str(r['اللون']), img: str(r['صورة']), icon: str(r['أيقونة']), label: str(r['الاسم المعروض']) }; });
@@ -235,11 +237,20 @@ function initFromData(data) {
         prods.forEach(p => {
             p['القسم'] = cat;
             const flag = p['عروض اليوم'] !== undefined ? p['عروض اليوم'] : p['الصفحة الرئيسية'];
-            if (!off && isYes(flag) && !allOffers.some(o => str(o['الاسم']) === str(p['الاسم']))) allOffers.push({ ...p, id: 'off_' + (n++) });
+            if (!off && isYes(flag) && !allOffers.some(o => o.src === p.id)) allOffers.push({ ...p, id: 'off_' + (n++), src: p.id });
         });
         if (prods.length) { allProducts = allProducts.concat(prods); CATEGORIES.push(cat); }
     });
 
+    // هوية كل منتج (sku): الاسم نفسه لو فريد (فالسلة والطلبات القديمة تفضل شغالة). لو الاسم متكرر بأسعار مختلفة (بيك رولز 15 / 10 / 5) كل واحد ياخد «الاسم ‹السعر›» عشان السلة والبحث والطلبات ما يتلخبطوش
+    const cnt = {}; allProducts.forEach(p => { const k = str(p['الاسم']); cnt[k] = (cnt[k] || 0) + 1; });
+    const taken = {}, skuBySrc = {}, firstSku = {};
+    allProducts.forEach(p => {
+        const k = str(p['الاسم']); let sk = k;
+        if (cnt[k] > 1) { sk = k + ' ‹' + (priceInfo(p).oldP || priceInfo(p).price) + '›'; if (taken[sk]) sk += ' #' + (taken[sk] + 1); }
+        taken[sk] = (taken[sk] || 0) + 1; p.sku = sk; skuBySrc[p.id] = sk; if (!firstSku[k]) firstSku[k] = sk;
+    });
+    allOffers.forEach(o => { o.sku = skuBySrc[o.src] || firstSku[str(o['الاسم'])] || str(o['الاسم']); });
     const liveNames = new Set(allProducts.map(p => str(p['الاسم'])));
     allOffers = allOffers.filter(o => !blockedNames.has(str(o['الاسم'])) || liveNames.has(str(o['الاسم'])));
     window.TM_DISABLED = Array.from(offCats);
@@ -274,22 +285,26 @@ async function runCheck(data) {
     const catSheets = data.names.filter(s => !EXCLUDED.includes(s.trim()));
     catSheets.forEach(c => { if (!mgmt.includes(c.trim())) warn.push(`شيت «${c}» في data.xlsx مش مكتوب في «إدارة الأقسام» (هيظهر في آخر الأقسام)`); });
     mgmt.forEach(c => { if (!catSheets.map(x => x.trim()).includes(c)) bad.push(`القسم «${c}» مكتوب في «إدارة الأقسام» ومفيش له شيت بنفس الاسم في data.xlsx`); });
-    const seen = {}, imgs = new Set();
+    const seen = Object.create(null), imgs = new Set();
     catSheets.forEach(c => rowsOf(c).forEach((r, i) => {
         const nm = str(r['الاسم']); if (!nm) return;
         const w = `${c} — ${nm}`, a = num(r['السعر الأساسي']), d = num(r['السعر بعد الخصم']);
-        if (a <= 0 && d <= 0) { if (!((data.pw || {}).missing || []).includes(`${c} — ${nm}`)) bad.push(`${w}: مفيش سعر`); }
+        if (a <= 0 && d <= 0 && !variantsOf(r).some(v => v.p > 0)) { if (!((data.pw || {}).missing || []).some(x => x === `${c} — ${nm}` || x.startsWith(`${c} — ${nm} (رقم`))) bad.push(`${w}: مفيش سعر (المنتج ده مش هيظهر للزبون)`); }
         else if (d > 0 && a > 0 && d >= a) warn.push(`${w}: «السعر بعد الخصم» (${d}) مش أقل من الأساسي (${a}) فالخصم مش هيظهر`);
         if (!str(r['الوحدة'])) warn.push(`${w}: الوحدة فاضية`);
         for (let i = 1; i <= MAXV; i++) { const vn = str(r['نوع ' + i]), vp = num(r['سعر ' + i]); if (!vn && vp) bad.push(`${w}: «سعر ${i}» مكتوب من غير «نوع ${i}»`); else if (vn && !vp && !num(r['السعر الأساسي'])) bad.push(`${w}: «نوع ${i}» من غير سعر ومفيش سعر أساسي`); }
         if (variantsOf(r).length && num(r['السعر بعد الخصم']) && num(r['السعر بعد الخصم']) < num(r['السعر الأساسي'])) warn.push(`${w}: «${str(r['الاسم'])}» عليه أنواع، فالخصم مش بيتطبق عليها (اكتب سعر كل نوع بعد الخصم)`);
-        if (seen[nm]) bad.push(`الاسم «${nm}» مكرر (في ${seen[nm]} و${c}) — لازم يكون الاسم فريد`); else seen[nm] = c;
+        const sig = [nm, a, d, variantsOf(r).map(v => v.n + ':' + v.p).join('|')].join('~');
+        (seen[nm] = seen[nm] || []).push({ c, a, sig });
         if (str(r['صورة'])) imgs.add(str(r['صورة']));
         for (let i = 1; i <= MAXV; i++) { const vi = str(r['صورة نوع ' + i]); if (vi) { if (!str(r['نوع ' + i])) warn.push(`${w}: «صورة نوع ${i}» مكتوبة من غير «نوع ${i}»`); else imgs.add(vi); } }
     }));
+    Object.keys(seen).forEach(nm => { const L = seen[nm]; if (L.length < 2) return;
+        const same = L.some((x, i) => L.some((y, j) => j > i && x.sig === y.sig));
+        warn.push(`«${nm}» مكتوب ${L.length} مرات (${L.map(x => x.c + ' بسعر ' + (x.a || '؟')).join('، ')}) — مسموح: كل سطر كارت مستقل بسلته وسعره${same ? ' | ⚠ فيه سطرين متطابقين تمامًا (نفس السعر ونفس الأنواع) — لو مش مقصود احذف واحد' : ''}`); });
     ((data.pw || {}).missing || []).forEach(x => bad.push(`${x}: مالوش سطر في prices.xlsx (لازم نفس الاسم بالظبط) — مفيش سعر ليه`));
     ((data.pw || {}).orphan || []).forEach(x => warn.push(x));
-    bundlesData.concat(rowsOf('باقات العروض').filter(r => str(r['الباقة']))).forEach(r => parseBundleNames(r).forEach(x => { if (!seen[x]) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مش موجود في أي قسم ظاهر`); }));
+    bundlesData.concat(rowsOf('باقات العروض').filter(r => str(r['الباقة']))).forEach(r => parseBundleNames(r).forEach(x => { if (seen[x] && seen[x].length > 1) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مكتوب ${seen[x].length} مرات في الأقسام — الباقة هتاخد أول واحد`); if (!seen[x]) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مش موجود في أي قسم ظاهر`); }));
     if (!allOffers.length) warn.push('مفيش أي منتج في «عروض اليوم» (اكتب نعم في عمود عروض اليوم)');
     if (!getCleanPhone(S['رقم الواتساب'])) bad.push('رقم الواتساب فاضي في الإعدادات — الطلبات مش هتتبعت');
     ['السلايدر', 'أقسام سريعة', 'البنرات', 'مجلة العروض'].forEach(n => rowsOf(n).forEach(r => { if (str(r['صورة']) && !/^https?:/.test(str(r['صورة']))) imgs.add(str(r['صورة'])); }));
@@ -387,8 +402,8 @@ function goHref(href) {
     const h = decodeURIComponent(href.replace(/^#/, ''));
     if (h.startsWith('search=')) {
         toggleSearch(true); const nm = h.slice(7); $('search-input').value = nm; performSearch();
-        const ex = allProducts.find(p => str(p['الاسم']) === nm.trim());          // رابط «منتج» من السلايدر/البنر/الأقسام السريعة: يفتح المنتج نفسه
-        if (ex) $('search-results').innerHTML = gridHTML([ex]);
+        const ex = allProducts.filter(p => str(p['الاسم']) === nm.trim());          // رابط «منتج» من السلايدر/البنر/الأقسام السريعة: يفتح المنتج نفسه (ولو الاسم متكرر بيفتح كلهم)
+        if (ex.length) $('search-results').innerHTML = gridHTML(ex);
     }
     else navigate(h);
 }
@@ -684,8 +699,8 @@ function productHTML(p) {
     const sold = !!p.soldOut;
     const badge = (hasOffer ? `<div class="discount-badge">خصم ${pct}%</div>` : '') + (str(p['شارة']) ? `<div class="discount-badge tag-badge${hasOffer ? '' : ' tag-solo'}">${esc(p['شارة'])}</div>` : '');
     const cc = catColorOf(p);
-    const inCart = cart.some(i => i.base === str(p['الاسم']));
-    return `<div class="product-card${sold ? ' sold-out' : ''}${inCart ? ' in-cart' : ''}"${cc ? ` style="--cc:${esc(cc)}"` : ''} data-name="${esc(p['الاسم'])}" data-price="${price}" data-variant="${esc(variants[0] || '')}" data-frac="${fracOf(p) ? 1 : 0}" data-img0="${esc(mainImg)}"><div class="pimg">${badge}<div class="in-cart-badge"><i class="fas fa-check"></i> مضاف</div><img src="${esc(firstImg)}" class="product-img" alt="${esc(p['الاسم'])}" loading="lazy" decoding="async"></div><div class="product-title">${esc(p['الاسم'])}</div>${variantHTML}<div class="price-container">${priceHTML}${variants.length ? '' : ' / ' + esc(p['الوحدة'] || 'وحدة')}</div><div class="card-actions"><div class="qty-controls"><button class="qty-btn" data-q="1" aria-label="زيادة">+</button><input type="number" class="qty-input" value="1" step="any" readonly><button class="qty-btn" data-q="-1" aria-label="نقص">-</button></div><button class="add-to-cart-btn"${sold ? ' disabled' : ''}>${sold ? 'غير متوفر' : esc(str(S['نص زر إضافة للسلة']) || 'إضافة للسلة')}</button></div></div>`;
+    const inCart = cart.some(i => (i.sku || i.base) === p.sku);
+    return `<div class="product-card${sold ? ' sold-out' : ''}${inCart ? ' in-cart' : ''}"${cc ? ` style="--cc:${esc(cc)}"` : ''} data-name="${esc(p['الاسم'])}" data-sku="${esc(p.sku || p['الاسم'])}" data-price="${price}" data-variant="${esc(variants[0] || '')}" data-frac="${fracOf(p) ? 1 : 0}" data-img0="${esc(mainImg)}"><div class="pimg">${badge}<div class="in-cart-badge"><i class="fas fa-check"></i> مضاف</div><img src="${esc(firstImg)}" class="product-img" alt="${esc(p['الاسم'])}" loading="lazy" decoding="async"></div><div class="product-title">${esc(p['الاسم'])}</div>${variantHTML}<div class="price-container">${priceHTML}${variants.length ? '' : ' / ' + esc(p['الوحدة'] || 'وحدة')}</div><div class="card-actions"><div class="qty-controls"><button class="qty-btn" data-q="1" aria-label="زيادة">+</button><input type="number" class="qty-input" value="1" step="any" readonly><button class="qty-btn" data-q="-1" aria-label="نقص">-</button></div><button class="add-to-cart-btn"${sold ? ' disabled' : ''}>${sold ? 'غير متوفر' : esc(str(S['نص زر إضافة للسلة']) || 'إضافة للسلة')}</button></div></div>`;
 }
 const gridHTML = (list) => `<div class="products-grid">${list.map(productHTML).join('')}</div>`;
 function sorted(list) {
@@ -776,7 +791,7 @@ let cart = [];
 try {
     const raw = JSON.parse(ls.get('cart_v2'));
     cart = (Array.isArray(raw) ? raw : []).filter(i => i && typeof i.name === 'string' && typeof i.key === 'string' && Number.isFinite(+i.price) && +i.price >= 0 && +i.qty >= 0.25 && Number.isInteger(+i.qty * 4))
-        .slice(0, 100).map(i => ({ key: String(i.key).slice(0, 200), base: String(i.base || i.name).slice(0, 200), variant: String(i.variant || '').slice(0, 100), name: i.name.slice(0, 250), price: +i.price, qty: Math.min(99, +i.qty), f: i.f ? 1 : 0 }));
+        .slice(0, 100).map(i => ({ key: String(i.key).slice(0, 200), base: String(i.base || i.name).slice(0, 200), sku: String(i.sku || i.base || i.name).slice(0, 220), variant: String(i.variant || '').slice(0, 100), name: i.name.slice(0, 250), price: +i.price, qty: Math.min(99, +i.qty), f: i.f ? 1 : 0 }));
 } catch (e) { cart = []; }
 const saveCart = () => ls.set('cart_v2', JSON.stringify(cart));
 const fracOf = (p) => str(p['الوحدة']) === 'كيلو' && !variantsOf(p).length;   // كيلو من غير أنواع = بيمشي ¼ ½ 1 1½
@@ -789,7 +804,7 @@ function repriceCart() {
     if (!cart.length || !allProducts.length) return;
     let gone = 0, chg = 0;
     cart = cart.filter(i => {
-        const p = allProducts.find(x => str(x['الاسم']) === i.base);
+        const p = findProd(i.base, i.sku, i.price, i.variant);
         if (!p) { if (/^باقة/.test(i.base)) return true; gone++; return false; }
         if (p.soldOut) { gone++; return false; }
         const pr = priceInfo(p, i.variant).price;
@@ -799,19 +814,27 @@ function repriceCart() {
     if (gone || chg) { saveCart(); setTimeout(() => toast((gone ? 'منتجات في سلتك مبقتش متاحة واتشالت' : '') + (gone && chg ? ' — ' : '') + (chg ? 'أسعار اتغيّرت، راجع سلتك' : '')), 700); }
 }
 const cartKey = (name, variant) => name + '||' + variant;
+/* بيلاقي المنتج: بالهوية (sku) لو موجودة. الاسم المتكرر ولقينا مش لاقيين هويته (السعر اتغيّر) = ما نخمّنش، المنتج يتشال بدل ما يتخلط بغيره. الطلبات القديمة (من غير sku) بتتطابق بالاسم، ولو الاسم متكرر بالسعر */
+function findProd(name, sku, price, variant) {
+    if (sku) { const x = allProducts.find(p => p.sku === sku); if (x) return x; }
+    const L = allProducts.filter(p => str(p['الاسم']) === name);
+    if (L.length < 2) return L[0];
+    if (sku && sku !== name) return undefined;
+    return (price != null && L.find(p => Math.abs(priceInfo(p, variant || '').price - price) < 0.001)) || L[0];
+}
 function markInCart() {
-    const names = new Set(cart.map(i => i.base));
-    $$('.product-card').forEach(c => c.classList.toggle('in-cart', names.has(c.dataset.name)));
+    const names = new Set(cart.map(i => i.sku || i.base));
+    $$('.product-card').forEach(c => c.classList.toggle('in-cart', names.has(c.dataset.sku || c.dataset.name)));
 }
 function addedPop(card) {
     markInCart();
     card.classList.add('just-added'); setTimeout(() => card.classList.remove('just-added'), 700);
 }
 function addToCart(card) {
-    const name = card.dataset.name, variant = card.dataset.variant || '';
+    const name = card.dataset.name, sku = card.dataset.sku || name, variant = card.dataset.variant || '';
     const input = card.querySelector('.qty-input'), f = card.dataset.frac === '1'; const qty = Math.max(f ? 0.25 : 1, Math.min(maxQ(), Math.round((parseFloat(input.value) || 1) * 100) / 100));
-    const key = cartKey(name, variant); const ex = cart.find(i => i.key === key);
-    if (ex) ex.qty = Math.min(99, ex.qty + qty); else cart.push({ key, base: name, variant, name: variant ? `${name} (${variant})` : name, price: num(card.dataset.price), qty, f: f ? 1 : 0 });
+    const key = cartKey(sku, variant); const ex = cart.find(i => i.key === key);
+    if (ex) ex.qty = Math.min(99, ex.qty + qty); else cart.push({ key, base: name, sku, variant, name: variant ? `${name} (${variant})` : name, price: num(card.dataset.price), qty, f: f ? 1 : 0 });
     input.value = 1; saveCart(); updateCartUI(); addedPop(card);
 }
 function totals() {
@@ -941,9 +964,9 @@ function submitAccount() {
 function reorderItem(h) {
     if (!h) return; let added = 0;
     h.items.forEach(it => {
-        const p = allProducts.find(x => str(x['الاسم']) === it.name); if (!p || p.soldOut) return;
-        const price = priceInfo(p, it.variant || '').price, key = cartKey(it.name, it.variant || ''), ex = cart.find(c => c.key === key);
-        if (ex) ex.qty = Math.min(99, ex.qty + it.qty); else cart.push({ key, base: it.name, variant: it.variant || '', name: it.variant ? `${it.name} (${it.variant})` : it.name, price, qty: it.qty, f: fracOf(p) ? 1 : 0 });
+        const p = findProd(it.name, it.sku, it.price, it.variant); if (!p || p.soldOut) return;
+        const price = priceInfo(p, it.variant || '').price, key = cartKey(p.sku, it.variant || ''), ex = cart.find(c => c.key === key);
+        if (ex) ex.qty = Math.min(99, ex.qty + it.qty); else cart.push({ key, base: it.name, sku: p.sku, variant: it.variant || '', name: it.variant ? `${it.name} (${it.variant})` : it.name, price, qty: it.qty, f: fracOf(p) ? 1 : 0 });
         added++;
     });
     saveCart(); updateCartUI(); toggleAccount(false);
@@ -973,7 +996,7 @@ function renderOrdersPage() {
 async function buildInvoiceBlobs(h, mime) {
     try { await document.fonts.load('700 24px Cairo'); await document.fonts.load('400 20px Cairo'); } catch (e) { }
     const W = 760, P = 36, NAMEW = 270, F = 'Cairo, Tahoma, Arial, sans-serif', c = cur(), store = str(S['اسم المتجر']) || 'ترولي ماركت', d = new Date(h.ts);
-    const rows = h.items.map(x => { let u = x.price; if (u == null) { const p = allProducts.find(z => str(z['الاسم']) === x.name); u = p ? priceInfo(p, x.variant).price : null; } return { name: x.name + (x.variant ? ' (' + x.variant + ')' : ''), qty: x.qty, u }; });
+    const rows = h.items.map(x => { let u = x.price; if (u == null) { const p = findProd(x.name, x.sku, null, x.variant); u = p ? priceInfo(p, x.variant).price : null; } return { name: x.name + (x.variant ? ' (' + x.variant + ')' : ''), qty: x.qty, u }; });
     const sub = h.sub != null ? h.sub : rows.reduce((s2, r) => s2 + (r.u || 0) * r.qty, 0), delivery = h.delivery != null ? h.delivery : Math.max(0, h.total - sub);
     const meta = [['التاريخ', d.toLocaleDateString('ar-EG') + ' — ' + d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })], ['العميل', h.name], ['الموبايل', h.phone], ['العنوان', h.address], ['علامة مميزة', h.landmark], ['طريقة الدفع', h.payment]].filter(m => m[1]);
     const chunks = []; for (let i = 0; i < rows.length; i += 40) chunks.push(rows.slice(i, i + 40)); if (!chunks.length) chunks.push([]);
@@ -1074,7 +1097,7 @@ window.tmInvoice = { build: buildInvoiceBlobs, share: shareInvoice };
 
 /* ---------- الفاتورة ---------- */
 function showInvoice(h) {
-    const c = esc(cur()), d = new Date(h.ts), unit = (x) => { if (x.price != null) return x.price; const p = allProducts.find(z => str(z['الاسم']) === x.name); return p ? priceInfo(p, x.variant).price : null; };
+    const c = esc(cur()), d = new Date(h.ts), unit = (x) => { if (x.price != null) return x.price; const p = findProd(x.name, x.sku, null, x.variant); return p ? priceInfo(p, x.variant).price : null; };
     const rows = h.items.map(x => ({ x, u: unit(x) })), known = rows.every(r => r.u !== null);
     const sub = h.sub != null ? h.sub : (known ? rows.reduce((s2, r) => s2 + r.u * r.x.qty, 0) : h.total);
     const delivery = h.delivery != null ? h.delivery : Math.max(0, h.total - sub);
@@ -1133,13 +1156,14 @@ async function checkout() {
     const mv = str(S['طريقة إرسال الطلب']), mode = /نص فقط/.test(mv) ? 'text' : /مشاركة/.test(mv) ? 'share' : 'text';
     try {
         const url = getOrderApiUrl();
-        const hist = getHist(); hist.unshift({ no, ts: d.toISOString(), phone: digits(phone), name, address: addr, landmark: land, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: i.base || String(i.name).replace(/ \([^()]*\)$/, ''), variant: i.variant || '', qty: i.qty, price: i.price })) });
+        const hist = getHist(); hist.unshift({ no, ts: d.toISOString(), phone: digits(phone), name, address: addr, landmark: land, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: i.base || String(i.name).replace(/ \([^()]*\)$/, ''), sku: i.sku || '', variant: i.variant || '', qty: i.qty, price: i.price })) });
         ls.set(HIST_KEY, JSON.stringify(hist.slice(0, 10)));
         if (accountsOn() && name && validPhone(digits(phone))) { saveUser(name, digits(phone), true); }
         if (url) {
             const baseOf = (i) => i.base || String(i.name).replace(/ \([^()]*\)$/, '');
-            const prodCat = (n) => { const p = allProducts.find(x => str(x['الاسم']) === n); return p ? str(p['القسم']) : ''; };
-            const order = { orderNo: no, ts: d.toISOString(), name, phone: digits(phone), address: addr, landmark: land, notes, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: baseOf(i), variant: i.variant || '', qty: i.qty, price: i.price, category: prodCat(baseOf(i)) })) };
+            const prodCat = (i) => { const p = findProd(baseOf(i), i.sku, i.price, i.variant); return p ? str(p['القسم']) : ''; };
+            const skuOf = (i) => (i.sku && i.sku !== baseOf(i)) ? i.sku : baseOf(i);   // منتج اسمه متكرر بيتبعت للجدول «بيك رولز ‹15›» عشان يتفرق عن «بيك رولز ‹10›»
+            const order = { orderNo: no, ts: d.toISOString(), name, phone: digits(phone), address: addr, landmark: land, notes, payment: pay, sub: t.sub, delivery: t.delivery, total: t.total, items: cart.map(i => ({ name: skuOf(i), variant: i.variant || '', qty: i.qty, price: i.price, category: prodCat(i) })) };
             sendToSheet(order);
         }
     } catch (e) { }
@@ -1229,4 +1253,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 36 */
+/* ترولي ماركت فيرجن 37 */
