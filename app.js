@@ -142,31 +142,12 @@ function loadXLSXLib() {
 async function fetchFresh() {
     await loadXLSXLib();
     const v = Math.floor(Date.now() / 300000);
-    const [r, rp] = await Promise.all([fetch('data.xlsx?v=' + v), fetch('prices.xlsx?v=' + v).catch(() => null)]);
+    const r = await fetch('data.xlsx?v=' + v);
     if (!r.ok) throw new Error('data.xlsx not found');
-    const toSheets = (wb) => { const s = {}; wb.SheetNames.forEach(n => { s[n] = XLSX.utils.sheet_to_json(wb.Sheets[n]); }); return s; };
-    const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' });
-    const sheets = toSheets(wb), out = { t: Date.now(), names: wb.SheetNames, sheets, pw: { missing: [], orphan: [] } };
-    if (rp && rp.ok) mergePrices(sheets, toSheets(XLSX.read(await rp.arrayBuffer(), { type: 'array' })), out.pw);
-    else if (!wb.SheetNames.some(n => (sheets[n][0] || {})['السعر الأساسي'] !== undefined)) throw new Error('prices.xlsx not found');   // مفيش prices.xlsx ومفيش أسعار في data.xlsx
+    const wb = XLSX.read(await r.arrayBuffer(), { type: 'array' }), sheets = {};
+    wb.SheetNames.forEach(n => { sheets[n] = XLSX.utils.sheet_to_json(wb.Sheets[n]); });
+    const out = { t: Date.now(), names: wb.SheetNames, sheets };
     return out;
-}
-/* دمج الأسعار: ملف prices.xlsx فيه (الاسم + السعر الأساسي + بعد الخصم + متوفر + عروض اليوم + شارة + نوع/سعر/صورة نوع 1..10) لكل شيت قسم. بيتربطوا بالاسم جوه نفس الشيت، وبعد الدمج الباقي شغال زي ما هو */
-const normName = (s) => String(s == null ? '' : s).normalize('NFC').replace(/\s+/g, ' ').trim();
-function mergePrices(sheets, psheets, pw) {
-    Object.keys(psheets).forEach(n => {
-        if (!sheets[n]) { if ((psheets[n] || []).some(r => normName(r['الاسم']))) pw.orphan.push(`شيت «${n}» في prices.xlsx مالوش شيت بنفس الاسم في data.xlsx`); return; }
-        // نفس الاسم ممكن يتكرر (بيك رولز بسعر 15 وبسعر 10): السطر رقم 1 في data.xlsx بياخد السطر رقم 1 بنفس الاسم في prices.xlsx، والتاني بالتاني، وهكذا
-        const byName = {}; (psheets[n] || []).forEach(r => { const k = normName(r['الاسم']); if (k) (byName[k] = byName[k] || []).push(r); });
-        const used = {};
-        sheets[n].forEach(r => {
-            const k = normName(r['الاسم']); if (!k) return;
-            const i = used[k] = (used[k] || 0) + 1, pr = (byName[k] || [])[i - 1];
-            if (!pr) { pw.missing.push(i > 1 || (byName[k] || []).length ? `${n} — ${k} (رقم ${i})` : `${n} — ${k}`); return; }
-            Object.keys(pr).forEach(c => { if (c !== 'الاسم') r[c] = pr[c]; });
-        });
-        Object.keys(byName).forEach(k => { const u = used[k] || 0; if (byName[k].length > u) pw.orphan.push(u ? `«${k}» مكتوب ${byName[k].length} مرات في شيت «${n}» في prices.xlsx وفي data.xlsx ${u} بس` : `«${k}» في شيت «${n}» في prices.xlsx مش موجود في data.xlsx`); });
-    });
 }
 /* تحديث صامت: من غير أي رسالة للزبون. بيتطبق فوراً لو الزبون في أول الصفحة والسلة فاضية، وإلا في الزيارة الجاية */
 function canReload() {
@@ -212,7 +193,52 @@ function initFromData(data) {
     // الإعدادات: أي شيت فيه عمودي «الإعداد» و«القيمة» (الإعدادات متقسمة على أكتر من شيت)
     Object.keys(data.sheets).forEach(n => { const rs = data.sheets[n]; if (rs.some(r => 'الإعداد' in r) && rs.some(r => 'القيمة' in r)) rs.forEach(r => { if (str(r['الإعداد']) && r['القيمة'] !== undefined) S[str(r['الإعداد'])] = r['القيمة']; }); });
     // قيم احتياطية: لو ملف data.xlsx ما اتحمّلش أو الخانة فاضية، الموقع يستخدم رقم المتجر ده
-    const DEFAULTS = { 'رقم الواتساب': '201116159948', 'رقم التليفون المعروض': '01116159948' };
+    const DEFAULTS = {
+        'رقم الواتساب': '201116159948', 'رقم التليفون المعروض': '01116159948',
+        // إعدادات اتشالت من الإكسل (الاسم، الألوان، أسماء الصفحات…): قيمها ثابتة هنا. لو رجّعت الصف في شيت «الإعدادات» قيمته هي اللي بتتطبق
+        "اسم المتجر": "ترولي ماركت",
+        "الاسم الإنجليزي": "TROLLEY MARKET",
+        "مدة تبديل اسم المتجر بالثواني": "4",
+        "رمز العملة": "ج",
+        "وصف الموقع": "كل طلبات البيت لحد البيت",
+        "أيقونة الموقع": "images/favicon.svg",
+        "اسم صفحة الرئيسية": "الرئيسية",
+        "اسم صفحة الأقسام": "الأقسام",
+        "اسم صفحة المجلة": "العروض",
+        "اسم صفحة حول": "حول",
+        "إظهار صفحة الأقسام": "نعم",
+        "إظهار صفحة المجلة": "نعم",
+        "إظهار صفحة حول": "نعم",
+        "شكل البحث": "كبسولة",
+        "نص خانة البحث": "ابحث عن منتج...",
+        "شكل شريط التنقل السفلي": "ملتصق",
+        "إظهار البنر السفلي": "لا",
+        "إظهار اسم القسم على السلايدر": "لا",
+        "إظهار باقات العروض": "نعم",
+        "إظهار اقتراحات البحث": "نعم",
+        "عنوان قسم العروض": "عروض اليوم",
+        "نص زر إضافة للسلة": "إضافة للسلة",
+        "اللون الرئيسي": "#DE5718",
+        "اللون الثانوي": "#5A3114",
+        "لون الخلفية": "#FFFFFF",
+        "لون البطاقات": "#F4F1E9",
+        "لون النص": "#3B2410",
+        "تلوين الأقسام بألوانها": "لا",
+        "لون عروض اليوم": "#DE5718",
+        "لون خصم المنتجات": "#F9B914",
+        "هالات الألوان": "لا",
+        "قوة الهالات": "متوسطة",
+        "لون زر السلة": "#DE5718",
+        "لون الخطوط والأيقونات (بني)": "#5A3114",
+        "لون الإبراز (برتقالي)": "#DE5718",
+        "لمسة فاتحة 1 (بيج غامق)": "#E6DCC8",
+        "لمسة فاتحة 2 (بيج)": "#F4F1E9",
+        "درجة البرتقالي": "#DE5718",
+        "درجة الأصفر": "#F9B914",
+        "درجة الأحمر": "#C8381F",
+        "درجة الكريمي الفاتح": "#FCFAF5",
+        "درجة الكريمي": "#F4F1E9"
+    };
     Object.keys(DEFAULTS).forEach(k => { if (!str(S[k])) S[k] = DEFAULTS[k]; });
     sliderData = visibleRows(rowsOf('السلايدر')).filter(r => str(r['صورة']));
     quickLinksData = visibleRows(rowsOf('أقسام سريعة')).filter(r => str(r['الاسم']));
@@ -289,7 +315,7 @@ async function runCheck(data) {
     catSheets.forEach(c => rowsOf(c).forEach((r, i) => {
         const nm = str(r['الاسم']); if (!nm) return;
         const w = `${c} — ${nm}`, a = num(r['السعر الأساسي']), d = num(r['السعر بعد الخصم']);
-        if (a <= 0 && d <= 0 && !variantsOf(r).some(v => v.p > 0)) { if (!((data.pw || {}).missing || []).some(x => x === `${c} — ${nm}` || x.startsWith(`${c} — ${nm} (رقم`))) bad.push(`${w}: مفيش سعر (المنتج ده مش هيظهر للزبون)`); }
+        if (a <= 0 && d <= 0 && !variantsOf(r).some(v => v.p > 0)) { bad.push(`${w}: مفيش سعر (المنتج ده مش هيظهر للزبون)`); }
         else if (d > 0 && a > 0 && d >= a) warn.push(`${w}: «السعر بعد الخصم» (${d}) مش أقل من الأساسي (${a}) فالخصم مش هيظهر`);
         if (!str(r['الوحدة'])) warn.push(`${w}: الوحدة فاضية`);
         for (let i = 1; i <= MAXV; i++) { const vn = str(r['نوع ' + i]), vp = num(r['سعر ' + i]); if (!vn && vp) bad.push(`${w}: «سعر ${i}» مكتوب من غير «نوع ${i}»`); else if (vn && !vp && !num(r['السعر الأساسي'])) bad.push(`${w}: «نوع ${i}» من غير سعر ومفيش سعر أساسي`); }
@@ -302,8 +328,6 @@ async function runCheck(data) {
     Object.keys(seen).forEach(nm => { const L = seen[nm]; if (L.length < 2) return;
         const same = L.some((x, i) => L.some((y, j) => j > i && x.sig === y.sig));
         warn.push(`«${nm}» مكتوب ${L.length} مرات (${L.map(x => x.c + ' بسعر ' + (x.a || '؟')).join('، ')}) — مسموح: كل سطر كارت مستقل بسلته وسعره${same ? ' | ⚠ فيه سطرين متطابقين تمامًا (نفس السعر ونفس الأنواع) — لو مش مقصود احذف واحد' : ''}`); });
-    ((data.pw || {}).missing || []).forEach(x => bad.push(`${x}: مالوش سطر في prices.xlsx (لازم نفس الاسم بالظبط) — مفيش سعر ليه`));
-    ((data.pw || {}).orphan || []).forEach(x => warn.push(x));
     bundlesData.concat(rowsOf('باقات العروض').filter(r => str(r['الباقة']))).forEach(r => parseBundleNames(r).forEach(x => { if (seen[x] && seen[x].length > 1) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مكتوب ${seen[x].length} مرات في الأقسام — الباقة هتاخد أول واحد`); if (!seen[x]) warn.push(`باقة «${str(r['الباقة'])}»: المنتج «${x}» مش موجود في أي قسم ظاهر`); }));
     if (!allOffers.length) warn.push('مفيش أي منتج في «عروض اليوم» (اكتب نعم في عمود عروض اليوم)');
     if (!getCleanPhone(S['رقم الواتساب'])) bad.push('رقم الواتساب فاضي في الإعدادات — الطلبات مش هتتبعت');
@@ -665,7 +689,7 @@ async function shareWebsite() {
 }
 
 /* ---------- المنتجات ---------- */
-/* الأنواع: (من prices.xlsx) أعمدة «نوع 1» و«سعر 1» و«صورة نوع 1» ... لحد 10. صورة النوع بتتحمّل بس لما الزبون يختاره. النوع من غير سعر بياخد السعر الأساسي. مفيش أنواع = مفيش قايمة */
+/* الأنواع: أعمدة «نوع 1» و«سعر 1» و«صورة نوع 1» ... لحد 10. صورة النوع بتتحمّل بس لما الزبون يختاره. النوع من غير سعر بياخد السعر الأساسي. مفيش أنواع = مفيش قايمة */
 const MAXV = 10;
 function variantsOf(p) {
     const vs = [];
@@ -1253,4 +1277,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 37 */
+/* ترولي ماركت فيرجن 38 */
