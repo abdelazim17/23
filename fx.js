@@ -10,7 +10,7 @@ root.classList.add('fx');
 /* 1) scroll reveal */
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.08,rootMargin:'0px 0px -6% 0px'});
 function arm(scope){(scope||document).querySelectorAll(SEL).forEach(function(el){
-  if(el.__fx)return;el.__fx=1;
+  if(el.__fx)return;el.__fx=1;if(el.closest&&el.closest('#search-results'))return;
   var i=Array.prototype.indexOf.call(el.parentNode.children,el);
   el.style.setProperty('--d',(i%6)*0.06+'s');el.classList.add('fx-reveal');io.observe(el)})}
 
@@ -58,13 +58,14 @@ function payInit(){var sel=document.getElementById('cust-pay'),box=document.getE
 
 /* 3e) الفوتر الثابت (في كل الصفحات) */
 function footer(){if(document.getElementById('fx-footer')||!window.TM||!TM.S||!TM.cats.length)return;if(S_('إظهار الفوتر','نعم')==='لا')return;
-  var nm=S_('اسم المتجر','ترولي ماركت'),ph=S_('رقم التليفون المعروض',''),wa=String(S_('رقم الواتساب','')).replace(/\D/g,''),hrs=S_('ساعات العمل',''),ad=S_('العنوان','');
+  var nm=S_('اسم المتجر','ترولي ماركت'),ph=S_('رقم التليفون المعروض',''),wa=TM.cleanPhone(S_('رقم واتساب التواصل','')||S_('رقم الواتساب','')),hrs=S_('ساعات العمل',''),ad=S_('العنوان','');
   var soc=[['رابط فيسبوك','fab fa-facebook-f'],['رابط إنستجرام','fab fa-instagram'],['رابط تيك توك','fab fa-tiktok'],['رابط يوتيوب','fab fa-youtube'],['رابط تيليجرام','fab fa-telegram'],['رابط تويتر','fab fa-twitter'],['رابط الخريطة','fas fa-location-dot']].filter(function(x){return /^https?:\/\//i.test(String(S_(x[0],'')).trim())});
   var f=document.createElement('footer');f.id='fx-footer';f.className='fx-footer';
   f.innerHTML='<div class="ft-in"><div class="ft-brand"><h3></h3><p></p><div class="ft-soc"></div></div><div class="ft-col"><h4>روابط سريعة</h4><nav></nav></div><div class="ft-col ft-contact"><h4>تواصل</h4><div></div></div></div><div class="ft-copy"></div>';
   f.querySelector('.ft-brand h3').textContent=nm;f.querySelector('.ft-brand p').textContent=S_('وصف الفوتر','');
   var sc=f.querySelector('.ft-soc');soc.forEach(function(x){var a=document.createElement('a');a.href=S_(x[0],'')||'#';a.target='_blank';a.rel='noopener noreferrer';a.setAttribute('aria-label',x[0]);a.innerHTML='<i class="'+x[1]+'"></i>';sc.appendChild(a)});
   var nav=f.querySelector('nav');[['#home','اسم صفحة الرئيسية','الرئيسية'],['#categories','اسم صفحة الأقسام','الأقسام'],['#catalog','عروض اليوم','عروض اليوم'],['#catalog','اسم صفحة المجلة','المجلة'],['#about','اسم صفحة حول','حول']].forEach(function(l,i){
+    if(i!==2&&(TM.hiddenPages||[]).indexOf(l[0].slice(1))>-1)return;
     if(i===2){var a2=document.createElement('a');a2.href='#home';a2.textContent=S_('عنوان قسم العروض','عروض اليوم');a2.dataset.off=1;nav.appendChild(a2);return}
     var a=document.createElement('a');a.href=l[0];a.textContent=S_(l[1],l[2]);nav.appendChild(a)});
   var c=f.querySelector('.ft-contact div');
@@ -196,4 +197,4 @@ function boot(){fitLogo();arm();vids();hero();capsule();tick();mo.observe(docume
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 var n=0,iv=setInterval(function(){hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 38 */
+/* ترولي ماركت فيرجن 40 */

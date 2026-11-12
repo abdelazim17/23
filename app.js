@@ -194,7 +194,6 @@ function initFromData(data) {
     Object.keys(data.sheets).forEach(n => { const rs = data.sheets[n]; if (rs.some(r => 'الإعداد' in r) && rs.some(r => 'القيمة' in r)) rs.forEach(r => { if (str(r['الإعداد']) && r['القيمة'] !== undefined) S[str(r['الإعداد'])] = r['القيمة']; }); });
     // قيم احتياطية: لو ملف data.xlsx ما اتحمّلش أو الخانة فاضية، الموقع يستخدم رقم المتجر ده
     const DEFAULTS = {
-        'رقم الواتساب': '201116159948', 'رقم التليفون المعروض': '01116159948',
         // إعدادات اتشالت من الإكسل (الاسم، الألوان، أسماء الصفحات…): قيمها ثابتة هنا. لو رجّعت الصف في شيت «الإعدادات» قيمته هي اللي بتتطبق
         "اسم المتجر": "ترولي ماركت",
         "الاسم الإنجليزي": "TROLLEY MARKET",
@@ -298,9 +297,10 @@ function initFromData(data) {
     applySettings(); applyUI();
     window.__tmLoaded = true; $('global-loading').style.display = 'none';
     $('app-content').style.display = 'block';
-    renderTodayOffers(); buildSlider(); renderQuickLinks(); applyBanners();
-    initCategoryFilterBar(); applyAboutSettings(); renderCatalog(); loadCustomerFields(); repriceCart(); updateCartUI(); setTimeout(flushOutbox, 2500);
-    route();
+    const step = (f) => { try { f(); } catch (e) { console.error(e); } };   // خطأ في جزء واحد ما يوقفش باقي الصفحة
+    [renderTodayOffers, buildSlider, renderQuickLinks, applyBanners, initCategoryFilterBar, applyAboutSettings, renderCatalog, loadCustomerFields, repriceCart, updateCartUI].forEach(step);
+    setTimeout(flushOutbox, 2500);
+    step(route);
     if (/[?&]check\b/.test(location.search)) runCheck(data);
 }
 
@@ -337,17 +337,23 @@ async function runCheck(data) {
     const li = (a, c) => a.length ? a.map(x => `<li style="color:${c};margin:4px 0">${esc(x)}</li>`).join('') : '<li style="color:#DE5718">✔ مفيش مشاكل</li>';
     const m = document.createElement('div');
     m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:14px;direction:rtl;font-family:Cairo,sans-serif';
-    m.innerHTML = `<div style="background:#fff;color:#3B2410;max-width:720px;width:100%;max-height:90vh;overflow:auto;border-radius:16px;padding:20px"><h2 style="margin:0 0 6px">🔎 فحص البيانات</h2><p style="margin:0 0 10px;opacity:.7">${allProducts.length} منتج • ${CATEGORIES.length} قسم • ${allOffers.length} في عروض اليوم</p><h3>❌ لازم تتصلح (${bad.length})</h3><ul>${li(bad, '#DE5718')}</ul><h3>⚠️ تنبيهات (${warn.length})</h3><ul>${li(warn, '#DE5718')}</ul><button style="padding:10px 22px;border:0;border-radius:10px;background:#DE5718;color:#fff;font:inherit;font-weight:800;cursor:pointer" data-x="close">إغلاق</button></div>`;
+    m.innerHTML = `<div style="background:#fff;color:#3B2410;max-width:720px;width:100%;max-height:90vh;overflow:auto;border-radius:16px;padding:20px"><h2 style="margin:0 0 6px">🔎 فحص البيانات</h2><p style="margin:0 0 10px;opacity:.7">${allProducts.length} منتج • ${CATEGORIES.length} قسم • ${allOffers.length} في عروض اليوم</p><h3>❌ لازم تتصلح (${bad.length})</h3><ul>${li(bad, '#DE5718')}</ul><h3>⚠️ تنبيهات (${warn.length})</h3><ul>${li(warn, '#DE5718')}</ul><button style="padding:10px 22px;border:0;border-radius:10px;background:#DE5718;color:#fff;font:inherit;font-weight:800;cursor:pointer" data-x="close">إغلاق</button> <button style="padding:10px 22px;border:2px solid #DE5718;border-radius:10px;background:#fff;color:#DE5718;font:inherit;font-weight:800;cursor:pointer" data-x="prices">نسخ قائمة الأسعار للجدول</button></div>`;
     m.querySelector('[data-x=close]').addEventListener('click', () => m.remove());
+    m.querySelector('[data-x=prices]').addEventListener('click', async () => {   // قائمة «الاسم ⇥ السعر» تتلصق في شيت «الأسعار» في الجدول (عمود A وB) فيشتغل تحذير «سعر مختلف»
+        const rows = []; allProducts.forEach(p => { const vs = variantsOf(p); if (vs.length) vs.forEach(v => rows.push([p.sku + ' (' + v.n + ')', priceInfo(p, v.n).price])); else rows.push([p.sku, priceInfo(p, '').price]); });
+        const txt = rows.map(r => r.join('\t')).join('\n');
+        try { await navigator.clipboard.writeText(txt); toast('اتنسخ ' + rows.length + ' سطر — الصقهم في شيت «الأسعار» (A2)'); } catch (e) { prompt('انسخ القايمة:', txt.slice(0, 3000)); }
+    });
     document.body.appendChild(m);
     window.__tmCheck = { bad, warn };
 }
 
 function applySettings() {
     const name = str(S['اسم المتجر']) || 'ترولي ماركت';
-    document.title = name;
+    document.title = name + ' | Trolley Market — سوبر ماركت أونلاين وتوصيل لحد البيت';   // نفس العنوان اللي في index.html (جوجل بيشوف الاتنين)
     $('logo-name').textContent = name;
     $('logo-en').textContent = str(S['الاسم الإنجليزي']) || 'TROLLEY MARKET';
+    applySEO(name);
     document.documentElement.style.setProperty('--swap', (Math.max(2, num(S['مدة تبديل اسم المتجر بالثواني']) || 4) * 2) + 's');
     // الألوان من الإكسيل (أي لون ناقص أو غلط بيتجاهل ويفضل الافتراضي)
     const hex = (v) => { const m = /^#?([0-9a-f]{6})$/i.exec(str(v)); return m ? '#' + m[1] : null; };
@@ -634,7 +640,7 @@ document.addEventListener('click', (e) => {
     const bt = e.target.closest('.bundle-add'); if (!bt) return;
     const b = parseBundle(bundlesData[+bt.dataset.bundle]); if (!b.ok) return;
     const inc = b.items.map(it => it.name + '×' + it.qty).join('، '), base = /^باقة/.test(b.name) ? b.name : 'باقة ' + b.name, key = cartKey(base, inc), ex = cart.find(x => x.key === key);
-    if (ex) ex.qty = Math.min(99, ex.qty + 1); else cart.push({ key, base, variant: inc, name: `${base} (${inc})`, price: b.price, qty: 1 });
+    if (ex) ex.qty = Math.min(maxQ(), ex.qty + 1); else if (cart.length >= 100) return toast('الحد الأقصى 100 صنف في الطلب الواحد'); else cart.push({ key, base, variant: inc, name: `${base} (${inc})`, price: b.price, qty: 1 });
     saveCart(); updateCartUI(); toast('✓ تمت إضافة الباقة للسلة');
 });
 function renderCatalog() {
@@ -647,6 +653,23 @@ function renderCatalog() {
     </div>` + bh;
 }
 
+/* ---------- بيانات جوجل (JSON-LD): محل بقالة بيوصّل لمناطق. المناطق من شيت الإعدادات «مناطق التوصيل» (غيّرها براحتك: فيصل ← الجيزة ← مصر) ---------- */
+const SITE_URL = 'https://trolley-market.page';
+function applySEO(name) {
+    try {
+        const old = document.getElementById('ld-store'); if (old) old.remove();
+        const areas = str(S['مناطق التوصيل']).split(/[،,\n]/).map(x => x.trim()).filter(Boolean);
+        const d = String(S['رقم التليفون المعروض'] || '').replace(/\D/g, '');
+        const same = ['رابط فيسبوك', 'رابط إنستجرام', 'رابط تيك توك', 'رابط يوتيوب', 'رابط تيليجرام', 'رابط تويتر'].map(k => str(S[k])).filter(u => /^https:\/\//i.test(u));
+        const ld = { '@context': 'https://schema.org', '@type': 'GroceryStore', name, alternateName: 'Trolley Market', url: SITE_URL + '/',
+            image: SITE_URL + '/images/share.png', logo: SITE_URL + '/images/icon-512.png', description: 'سوبر ماركت أونلاين: اطلب من واتساب وبنوصّل لحد البيت.' };
+        if (d.length >= 10) ld.telephone = '+20' + d.replace(/^0/, '');
+        if (areas.length) ld.areaServed = areas.map(a => ({ '@type': 'AdministrativeArea', name: a }));
+        if (same.length) ld.sameAs = same;
+        const el = document.createElement('script'); el.type = 'application/ld+json'; el.id = 'ld-store'; el.textContent = JSON.stringify(ld);
+        document.head.appendChild(el);
+    } catch (e) {}
+}
 /* ---------- صفحة حول ---------- */
 function applyAboutSettings() {
     const name = str(S['اسم المتجر']) || 'ترولي ماركت';
@@ -658,6 +681,7 @@ function applyAboutSettings() {
     const info = [];
     if (str(S['ساعات العمل'])) info.push(`<div><i class="fas fa-clock"></i> ${esc(S['ساعات العمل'])}</div>`);
     if (str(S['العنوان'])) info.push(`<div><i class="fas fa-location-dot"></i> ${esc(S['العنوان'])}</div>`);
+    if (str(S['مناطق التوصيل'])) info.push(`<div><i class="fas fa-truck"></i> نوصّل: ${esc(S['مناطق التوصيل'])}</div>`);
     if (info.length) { $('info-glass').innerHTML = info.join(''); $('info-glass').style.display = 'flex'; }
 
     const phone = getCleanPhone(S['رقم واتساب التواصل'] || S['رقم الواتساب']);
@@ -683,7 +707,7 @@ function applyAboutSettings() {
     if (phone) $('wa-social-link').href = 'https://wa.me/' + phone; else $('wa-social-link').style.display = 'none';
 }
 async function shareWebsite() {
-    const url = str(S['رابط الموقع']) || location.href.split('#')[0];
+    const url = str(S['رابط الموقع']) || SITE_URL + '/';
     if (navigator.share) { try { await navigator.share({ title: str(S['اسم المتجر']) || 'ترولي ماركت', url }); } catch (e) {} return; }
     try { await navigator.clipboard.writeText(url); toast('تم نسخ الرابط'); } catch (e) { prompt('انسخ الرابط:', url); }
 }
@@ -811,6 +835,7 @@ function performSearch() {
 }
 
 /* ---------- السلة ---------- */
+function lastCartBtn() { try { const b = JSON.parse(ls.get('tm_last_cart') || 'null'); return b && Date.now() - b.t < 864e5 && Array.isArray(b.cart) && b.cart.length ? '<button type="button" class="cart-restore" data-action="restore-cart"><i class="fas fa-rotate-left"></i> استرجاع آخر سلة</button>' : ''; } catch (e) { return ''; } }
 let cart = [];
 try {
     const raw = JSON.parse(ls.get('cart_v2'));
@@ -829,7 +854,13 @@ function repriceCart() {
     let gone = 0, chg = 0;
     cart = cart.filter(i => {
         const p = findProd(i.base, i.sku, i.price, i.variant);
-        if (!p) { if (/^باقة/.test(i.base)) return true; gone++; return false; }
+        if (!p && /^باقة/.test(i.base)) {                                   // باقة: لازم لسه موجودة ومتاحة بنفس المحتويات، وسعرها بيتحدّث
+            const row = bundlesData.find(r => (/^باقة/.test(str(r['الباقة'])) ? str(r['الباقة']) : 'باقة ' + str(r['الباقة'])) === i.base), b = row && parseBundle(row);
+            if (!b || !b.ok || b.items.map(it => it.name + '×' + it.qty).join('، ') !== i.variant) { gone++; return false; }
+            if (Math.abs(b.price - i.price) > 0.001) { i.price = b.price; chg++; }
+            return true;
+        }
+        if (!p) { gone++; return false; }
         if (p.soldOut) { gone++; return false; }
         const pr = priceInfo(p, i.variant).price;
         if (Math.abs(pr - i.price) > 0.001) { i.price = pr; chg++; }
@@ -858,7 +889,7 @@ function addToCart(card) {
     const name = card.dataset.name, sku = card.dataset.sku || name, variant = card.dataset.variant || '';
     const input = card.querySelector('.qty-input'), f = card.dataset.frac === '1'; const qty = Math.max(f ? 0.25 : 1, Math.min(maxQ(), Math.round((parseFloat(input.value) || 1) * 100) / 100));
     const key = cartKey(sku, variant); const ex = cart.find(i => i.key === key);
-    if (ex) ex.qty = Math.min(99, ex.qty + qty); else cart.push({ key, base: name, sku, variant, name: variant ? `${name} (${variant})` : name, price: num(card.dataset.price), qty, f: f ? 1 : 0 });
+    if (ex) ex.qty = Math.min(maxQ(), ex.qty + qty); else if (cart.length >= 100) return toast('الحد الأقصى 100 صنف في الطلب الواحد'); else cart.push({ key, base: name, sku, variant, name: variant ? `${name} (${variant})` : name, price: num(card.dataset.price), qty, f: f ? 1 : 0 });
     input.value = 1; saveCart(); updateCartUI(); addedPop(card);
 }
 function totals() {
@@ -873,7 +904,7 @@ function updateCartUI() {
     try { markInCart(); } catch (e) {}
     $('cart-count').textContent = Math.ceil(cart.reduce((s, i) => s + i.qty, 0));
     const c = esc(cur()); const box = $('cart-items');
-    box.innerHTML = cart.length ? cart.map((i, idx) => `<div class="cart-item"><div class="ci-info"><strong>${esc(i.name)}</strong><small>${fmt(i.price)} ${c}</small></div><div class="ci-side"><div class="ci-qty"><button data-ci="inc" data-idx="${idx}" aria-label="زيادة">+</button><span>${ql(i.qty)}</span><button data-ci="dec" data-idx="${idx}" aria-label="نقص">-</button></div><strong>${fmt(i.price * i.qty)} ${c}</strong><button class="ci-rm" data-ci="rm" data-idx="${idx}" aria-label="حذف"><i class="fas fa-xmark"></i></button></div></div>`).join('') : '<p class="cart-empty">السلة فارغة</p>';
+    box.innerHTML = cart.length ? cart.map((i, idx) => `<div class="cart-item"><div class="ci-info"><strong>${esc(i.name)}</strong><small>${fmt(i.price)} ${c}</small></div><div class="ci-side"><div class="ci-qty"><button data-ci="inc" data-idx="${idx}" aria-label="زيادة">+</button><span>${ql(i.qty)}</span><button data-ci="dec" data-idx="${idx}" aria-label="نقص">-</button></div><strong>${fmt(i.price * i.qty)} ${c}</strong><button class="ci-rm" data-ci="rm" data-idx="${idx}" aria-label="حذف"><i class="fas fa-xmark"></i></button></div></div>`).join('') : `<p class="cart-empty">السلة فارغة</p>${lastCartBtn()}`;
     const t = totals();
     let sum = '';
     if (t.fee && cart.length) sum += `<div><span>التوصيل</span><b>${t.delivery ? fmt(t.delivery) + ' ' + c : 'مجاني '}</b></div>`;
@@ -886,7 +917,7 @@ function updateCartUI() {
         let h = '';
         const area = str(S['نطاق التوصيل']);
         if (area) h += `<div class="cp cp-area"><span><i class="fas fa-location-dot"></i> ${esc(area)}</span></div>`;
-        if (cart.length && t.heavy && t.delivery) h += `<div class="cp cp-heavy"><span><i class="fas fa-weight-hanging"></i> ${esc(msg('رسالة الطلب التقيل', 'طلبك تقيل فرسوم التوصيل {FEE}', { FEE: money(t.fee) }))}</span></div>`;
+        if (cart.length && t.heavy && t.delivery) h += `<div class="cp cp-heavy"><span><i class="fas fa-weight-hanging"></i> ${esc(msg('رسالة الطلب التقيل', 'طلبك تقيل، فرسوم التوصيل {FEE}', { FEE: money(t.fee) }))}</span></div>`;
         if (cart.length && t.min && t.sub < t.min) h += `<div class="cp cp-min"><span><i class="fas fa-triangle-exclamation"></i> ${esc(msg('رسالة الحد الأدنى', 'الحد الأدنى للطلب {MIN} — فاضل {X}', { MIN: money(t.min), X: money(t.min - t.sub) }))}</span><div class="cp-bar"><i style="width:${Math.min(100, t.sub / t.min * 100)}%"></i></div></div>`;
         if (cart.length && t.fee && t.free) h += t.sub >= t.free
             ? `<div class="cp cp-ok"><span><i class="fas fa-circle-check"></i> ${esc(msg('رسالة تم التوصيل المجاني', 'توصيلك مجاني!', {}))}</span><div class="cp-bar"><i style="width:100%"></i></div></div>`
@@ -907,6 +938,8 @@ const validPhone = (p) => /^\d{10,15}$/.test(p) && (!p.startsWith('01') || p.len
 const OUTBOX = 'tm_outbox', OUTBOX_TTL = 7 * 864e5;
 const getOutbox = () => { try { const a = JSON.parse(ls.get(OUTBOX) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
 const setOutbox = (a) => ls.set(OUTBOX, JSON.stringify(a.slice(-20)));
+/* طلب ما وصلش الجدول (فشل أو اترفض): بنسجّله هنا على الجهاز، والطلب نفسه فاتورته راحت واتساب. للمراجعة: localStorage.tm_lost */
+function noteLost(it, why) { try { const a = JSON.parse(ls.get('tm_lost') || '[]'); a.push({ no: it.id, t: Date.now(), why }); ls.set('tm_lost', JSON.stringify(a.slice(-20))); } catch (e) {} }
 let flushing = false;
 async function flushOutbox() {
     const url = getOrderApiUrl(); if (!url || flushing || !getOutbox().length) return;
@@ -915,12 +948,12 @@ async function flushOutbox() {
         const tried = new Set();   // أي طلب اتضاف أثناء الإرسال بيتبعت في نفس الدورة
         for (;;) {
             const it = getOutbox().find(x => !tried.has(x.id)); if (!it) break; tried.add(it.id);
-            if (Date.now() - it.t > OUTBOX_TTL || (it.n || 0) >= 4) { setOutbox(getOutbox().filter(x => x.id !== it.id)); continue; }
+            if (Date.now() - it.t > OUTBOX_TTL || (it.n || 0) >= 4) { noteLost(it, 'فشل الإرسال'); setOutbox(getOutbox().filter(x => x.id !== it.id)); continue; }
             let ok = false, closed = false;
             try {
                 const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
                 const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(it.p), signal: ctl.signal, keepalive: true });
-                clearTimeout(tm); const j = await r.json(); ok = !!j && (j.status === 'ok' || j.status === 'invalid'); closed = !!j && j.status === 'closed';
+                clearTimeout(tm); const j = await r.json(); if (j && j.status === 'invalid') noteLost(it, 'الجدول رفض الطلب (invalid)'); ok = !!j && (j.status === 'ok' || j.status === 'invalid'); closed = !!j && j.status === 'closed';
             } catch (e) { }
             if (ok) setOutbox(getOutbox().filter(x => x.id !== it.id));
             else { if (!closed) setOutbox(getOutbox().map(x => x.id === it.id ? { ...x, n: (x.n || 0) + 1 } : x)); break; }
@@ -990,7 +1023,7 @@ function reorderItem(h) {
     h.items.forEach(it => {
         const p = findProd(it.name, it.sku, it.price, it.variant); if (!p || p.soldOut) return;
         const price = priceInfo(p, it.variant || '').price, key = cartKey(p.sku, it.variant || ''), ex = cart.find(c => c.key === key);
-        if (ex) ex.qty = Math.min(99, ex.qty + it.qty); else cart.push({ key, base: it.name, sku: p.sku, variant: it.variant || '', name: it.variant ? `${it.name} (${it.variant})` : it.name, price, qty: it.qty, f: fracOf(p) ? 1 : 0 });
+        if (ex) ex.qty = Math.min(maxQ(), ex.qty + it.qty); else cart.push({ key, base: it.name, sku: p.sku, variant: it.variant || '', name: it.variant ? `${it.name} (${it.variant})` : it.name, price, qty: it.qty, f: fracOf(p) ? 1 : 0 });
         added++;
     });
     saveCart(); updateCartUI(); toggleAccount(false);
@@ -1087,7 +1120,7 @@ async function shareInvoice(h, saveOnly) {
 }
 async function offerInvoice(h, opts) {
     const send = !!opts; if (!h || (!send && isNo(S['إرسال صورة الفاتورة بعد الطلب']))) return;
-    let m = $('invoice-modal'); if (!m) { m = document.createElement('div'); m.id = 'invoice-modal'; m.className = 'inv-overlay'; document.body.appendChild(m); }
+    let m = $('invoice-modal'); if (!m) { m = document.createElement('div'); m.id = 'invoice-modal'; m.className = 'inv-overlay'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'الفاتورة'); document.body.appendChild(m); }
     window.__inv = h; window.__invText = send ? opts.text : ''; window.__invFiles = null;
     if (!send) {
         m.innerHTML = `<div class="inv-wrap inv-send"><div class="inv-sheet"><div class="inv-ok"><i class="fas fa-circle-check"></i></div><h3>اتجهّز طلبك وفاتورتك</h3><p>بعد ما رسالة الطلب توصل على واتساب، ابعت صورة الفاتورة كمان عشان نجهّز طلبك أسرع.</p>
@@ -1125,7 +1158,7 @@ function showInvoice(h) {
     const rows = h.items.map(x => ({ x, u: unit(x) })), known = rows.every(r => r.u !== null);
     const sub = h.sub != null ? h.sub : (known ? rows.reduce((s2, r) => s2 + r.u * r.x.qty, 0) : h.total);
     const delivery = h.delivery != null ? h.delivery : Math.max(0, h.total - sub);
-    let m = $('invoice-modal'); if (!m) { m = document.createElement('div'); m.id = 'invoice-modal'; m.className = 'inv-overlay'; document.body.appendChild(m); }
+    let m = $('invoice-modal'); if (!m) { m = document.createElement('div'); m.id = 'invoice-modal'; m.className = 'inv-overlay'; m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-label', 'الفاتورة'); document.body.appendChild(m); }
     const line = (k, v, l) => v ? `<div><span>${k}</span><b>${l ? ltr(v) : esc(v)}</b></div>` : '';
     m.innerHTML = `<div class="inv-wrap"><div class="inv-sheet">
         <div class="inv-head"><div><h2>${esc(str(S['اسم المتجر']) || 'ترولي ماركت')}</h2><p>${ltr(str(S['رقم التليفون المعروض']) || '')}</p></div><div class="inv-tag"><b>فاتورة</b><span>${esc(h.no)}</span></div></div>
@@ -1151,7 +1184,7 @@ function toggleCart(force) {
     const open = force === undefined ? !$('cart-sidebar').classList.contains('open') : force;
     $('cart-sidebar').classList.toggle('open', open); $('overlay').classList.toggle('show', open);
 }
-function closeOverlays() { toggleCart(false); toggleSearch(false); const am = $('acct-modal'); if (am) am.classList.remove('open'); $('lightbox').classList.remove('show'); }
+function closeOverlays() { const iv = $('invoice-modal'); if (iv) iv.classList.remove('open'); toggleCart(false); toggleSearch(false); const am = $('acct-modal'); if (am) am.classList.remove('open'); $('lightbox').classList.remove('show'); }
 const FIELDS = { 'cust-name': 'cust_name', 'cust-address': 'cust_address', 'cust-landmark': 'cust_landmark', 'cust-phone': 'cust_phone' };
 function loadCustomerFields() { Object.entries(FIELDS).forEach(([id, k]) => { if (!$(id)) return; $(id).value = ls.get(k) || ''; $(id).addEventListener('input', () => ls.set(k, $(id).value)); }); if (accountsOn()) setCustomerFields(getUser()); syncAccountUI(); }
 async function checkout() {
@@ -1192,12 +1225,13 @@ async function checkout() {
         }
     } catch (e) { }
     const waUrl = (txt) => `https://wa.me/${getCleanPhone(S['رقم الواتساب'])}?text=${encodeURIComponent(txt)}`;
-    if (mode === 'text') window.open(waUrl(m), '_blank');
+    ls.set('tm_last_cart', JSON.stringify({ t: Date.now(), cart }));              // نسخة احتياطية 24 ساعة (زر «استرجاع آخر سلة» في السلة الفاضية)
+    if (mode === 'text') { const w = window.open(waUrl(m), '_blank'); if (!w) location.href = waUrl(m); }   // لو المتصفح منع النافذة بنفتح واتساب في نفس الصفحة
     cart = []; saveCart(); updateCartUI(); toggleCart(false); navigate('home'); window.scrollTo(0, 0);
     if (mode === 'share') offerInvoice(getHist()[0], { text: m });
 }
 
-window.TM={get route(){return currentRoute},get user(){return getUser()},get S(){return S},get products(){return allProducts},get offers(){return allOffers},get cats(){return CATEGORIES},get catMeta(){return catMeta},navigate:(r)=>navigate(r),catLabel:(c)=>catLabel(c),get cart(){return cart},totals:()=>totals(),cur:()=>cur(),fmt:(n)=>fmt(n),priceInfo:(p)=>priceInfo(p),phone:()=>getCleanPhone(S['رقم الواتساب']),clear(){cart=[];saveCart();updateCartUI()}};
+window.TM={get route(){return currentRoute},get user(){return getUser()},get S(){return S},get products(){return allProducts},get offers(){return allOffers},get cats(){return CATEGORIES},get catMeta(){return catMeta},navigate:(r)=>navigate(r),catLabel:(c)=>catLabel(c),get cart(){return cart},totals:()=>totals(),cur:()=>cur(),fmt:(n)=>fmt(n),priceInfo:(p)=>priceInfo(p),phone:()=>getCleanPhone(S['رقم الواتساب']),cleanPhone:(r)=>getCleanPhone(r),get hiddenPages(){return Array.from(HIDDEN_PAGES)},clear(){cart=[];saveCart();updateCartUI()}};
 
 /* ---------- الأحداث (تفويض واحد لكل الصفحة) ---------- */
 document.addEventListener('click', (e) => {
@@ -1259,9 +1293,10 @@ document.addEventListener('click', (e) => {
         case 'acct-edit': renderAccount('edit'); break;
         case 'acct-orders': toggleAccount(false); navigate('orders'); break;
         case 'acct-back': renderAccount(); break;
-        case 'acct-wipe': if (confirm('هنمسح بياناتك وطلباتك السابقة من الجهاز ده؟')) { [ACC_KEY, HIST_KEY, 'cust_name', 'cust_phone', 'cust_address', 'cust_notes', 'cust_landmark'].forEach(k => ls.del(k)); ['cust-name', 'cust-phone', 'cust-address', 'cust-notes', 'cust-landmark'].forEach(id => { const el = $(id); if (el) el.value = ''; }); syncAccountUI(); renderAccount(); toast('اتمسحت بياناتك من الجهاز'); } break;
-        case 'acct-logout': if (confirm('تسجيل الخروج من الحساب؟')) { ls.del(ACC_KEY); syncAccountUI(); renderAccount(); } break;
+        case 'acct-wipe': if (confirm('هنمسح بياناتك وطلباتك السابقة من الجهاز ده؟')) { [ACC_KEY, HIST_KEY, OUTBOX, 'cart_v2', 'tm_last_cart', 'tm_lost', 'cust_name', 'cust_phone', 'cust_address', 'cust_notes', 'cust_landmark'].forEach(k => ls.del(k)); cart = []; updateCartUI(); ['cust-name', 'cust-phone', 'cust-address', 'cust-notes', 'cust-landmark'].forEach(id => { const el = $(id); if (el) el.value = ''; }); syncAccountUI(); renderAccount(); toast('اتمسحت بياناتك من الجهاز'); } break;
+        case 'acct-logout': if (confirm('تسجيل الخروج من الحساب؟')) { [ACC_KEY, 'cust_name', 'cust_phone', 'cust_address', 'cust_landmark'].forEach(k => ls.del(k)); ['cust-name', 'cust-phone', 'cust-address', 'cust-landmark'].forEach(id => { if ($(id)) $(id).value = ''; }); syncAccountUI(); renderAccount(); } break;
         case 'acct-reorder': reorder(+act.dataset.i); break;
+        case 'restore-cart': { try { const b = JSON.parse(ls.get('tm_last_cart') || 'null'); if (b && Array.isArray(b.cart)) { ls.set('cart_v2', JSON.stringify(b.cart)); ls.del('tm_last_cart'); location.reload(); } } catch (e) {} break; }
         case 'clear-cart': if (cart.length && confirm('تفريغ السلة؟')) { cart = []; saveCart(); updateCartUI(); } break;
         case 'lightbox': { const lb = $('lightbox'); lb.querySelector('img').src = act.src; lb.classList.add('show'); break; }
         case 'close-lightbox': $('lightbox').classList.remove('show'); break;
@@ -1277,4 +1312,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 38 */
+/* ترولي ماركت فيرجن 40 */
