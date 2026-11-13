@@ -42,7 +42,7 @@ let sliderData = [], quickLinksData = [], bannersData = {}, catalogData = [], bu
 let sortMode = 'default';
 let catMeta = {};
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="rgba(16,20,26,.14)"/><path d="M60 130l25-30 20 22 15-17 20 25z" fill="rgba(16,20,26,.14)"/><circle cx="75" cy="75" r="12" fill="rgba(16,20,26,.14)"/></svg>');
-const EXCLUDED = ['السلايدر', 'البنرات', 'عروض اليوم', 'مجلة العروض', 'الإعدادات', 'أقسام سريعة', 'دليل الاستخدام', 'إدارة الأقسام', 'باقات العروض', 'عام', 'الألوان', 'التواصل والفوتر', 'الطلب والدفع', 'الهيرو والرئيسية', 'المنتجات', 'صفحة حول'];
+const EXCLUDED = ['السلايدر', 'البنرات', 'عروض اليوم', 'مجلة العروض', 'الإعدادات', 'أقسام سريعة', 'دليل الاستخدام', 'فهرس', 'قوائم', 'إدارة الأقسام', 'باقات العروض', 'عام', 'الألوان', 'التواصل والفوتر', 'الطلب والدفع', 'الهيرو والرئيسية', 'المنتجات', 'صفحة حول'];
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -239,9 +239,11 @@ function initFromData(data) {
         "درجة الكريمي": "#F4F1E9"
     };
     Object.keys(DEFAULTS).forEach(k => { if (!str(S[k])) S[k] = DEFAULTS[k]; });
-    sliderData = visibleRows(rowsOf('السلايدر')).filter(r => str(r['صورة']));
-    quickLinksData = visibleRows(rowsOf('أقسام سريعة')).filter(r => str(r['الاسم']));
-    rowsOf('البنرات').filter(r => !isNo(r['ظاهر'])).forEach(r => { bannersData[str(r['مكان_البانر'])] = { img: str(r['صورة']), type: str(r['نوع الاستهداف']), value: str(r['القسم أو المنتج المستهدف']), title: str(r['العنوان']), sub: str(r['العنوان الفرعي']), btn: str(r['نص الزر']) }; });
+    // جملة نطاق التوصيل بتتبني من «مناطق التوصيل» (مصدر واحد). تقدر تكتب جملة بإيدك في «نطاق التوصيل» لو عايز صياغة تانية
+    if (!str(S['نطاق التوصيل']) && str(S['مناطق التوصيل'])) S['نطاق التوصيل'] = 'بنوصّل في ' + str(S['مناطق التوصيل']).split(/[،,\n]/).map(x => x.trim()).filter(Boolean).join(' و');
+    sliderData = visibleRows(rowsOf('السلايدر')).filter(r => str(r['صورة'])).map(normT);
+    quickLinksData = visibleRows(rowsOf('أقسام سريعة')).filter(r => str(r['الاسم'])).map(normT);
+    rowsOf('البنرات').filter(r => !isNo(r['ظاهر'])).forEach(r => { bannersData[str(r['مكان_البانر'])] = { img: str(r['صورة']), type: tgtOf(r).type, value: tgtOf(r).value, title: str(r['العنوان']), sub: str(r['العنوان الفرعي']), btn: str(r['نص الزر']) }; });
     catalogData = rowsOf('مجلة العروض').filter(r => str(r['صورة']) && !isNo(r['ظاهر']));
     bundlesData = rowsOf('باقات العروض').filter(r => str(r['الباقة']) && !isNo(r['ظاهر']) && num(r['سعر الباقة']) > 0);
 
@@ -251,7 +253,7 @@ function initFromData(data) {
     const clean = (rows, prefix, off) => rows.filter(r => str(r['الاسم']) && hasPrice(r) && (off || showSold || !isNo(r['متوفر']))).map(r => ({ ...r, soldOut: !!off || isNo(r['متوفر']), id: prefix + (n++) }));
     // التحكم في الأقسام من شيت "إدارة الأقسام": إخفاء وترتيب (الأقسام الجديدة اللي مش مكتوبة هناك بتظهر في الآخر)
     const hideCats = new Set(), offCats = new Set(), blockedNames = new Set(), catOrder = {}; catMeta = {};
-    rowsOf('إدارة الأقسام').forEach(r => { const k = str(r['القسم']); if (!k) return; { const vis = str(r['ظاهر']); if (/غير متوفر|نفد|موقوف|متوقف/.test(vis)) offCats.add(k); else if (isNo(vis)) hideCats.add(k); } if (num(r['الترتيب'])) catOrder[k] = num(r['الترتيب']); catMeta[k] = { color: str(r['اللون']), img: str(r['صورة']), icon: str(r['أيقونة']), label: str(r['الاسم المعروض']) }; });
+    rowsOf('إدارة الأقسام').forEach(r => { const k = str(r['القسم']); if (!k) return; { const vis = str(r['ظاهر']); if (/غير متوفر|نفد|موقوف|متوقف/.test(vis)) offCats.add(k); else if (isNo(vis)) hideCats.add(k); } if (num(r['الترتيب'])) catOrder[k] = num(r['الترتيب']); catMeta[k] = { color: SEC_COLORS[str(r['لون الكروت'])] || str(r['لون الكروت']), icon: str(r['أيقونة']), label: str(r['الاسم المعروض']) }; });
     allOffers = clean(rowsOf('عروض اليوم'), 'off_');
     data.names.filter(s => !EXCLUDED.includes(s.trim())).forEach(cat => {
         const rows = rowsOf(cat);
@@ -285,7 +287,7 @@ function initFromData(data) {
     const alive = (type, value) => {
         value = str(value); type = str(type) || 'قسم';
         if (!value) return true;
-        if (type === 'قسم') return value === 'عروض اليوم' ? allOffers.length > 0 : CATEGORIES.includes(value);
+        if (type === 'قسم') return value === 'عروض اليوم' ? allOffers.length > 0 : PAGE_TARGETS[value] ? true : CATEGORIES.includes(value);
         if (type === 'منتج') { const q = norm(value); return allProducts.some(p => norm(p['الاسم']).includes(q)); }
         return true;
     };
@@ -598,10 +600,19 @@ function renderQuickLinks() {
 }
 
 /* ---------- البنرات ---------- */
+// «يودّي على» (قايمة اختيار) + «منتج أو رابط» (للمنتج المعيّن والرابط الخارجي بس) ← نوع + قيمة
+const PAGE_TARGETS = { 'الرئيسية': '#home', 'كل الأقسام': '#categories', 'كل المنتجات': '#catalog', 'عروض اليوم': '#home/offers', 'حول': '#about' };
+function tgtOf(r) {
+    const k = str(r['يودّي على']), x = str(r['منتج أو رابط']);
+    if (k === 'منتج معيّن') return { type: 'منتج', value: x };
+    if (k === 'رابط خارجي') return { type: 'رابط', value: x };
+    return { type: 'قسم', value: k };
+}
+const normT = r => { const t = tgtOf(r); r['نوع الاستهداف'] = t.type; r['القسم_المستهدف'] = t.value; return r; };   // الباقي في الكود بيقرا الاتنين دول
 function targetHref(type, value) {
     value = str(value); type = str(type) || 'قسم';
     if (!value) return null;
-    if (type === 'قسم') return value === 'عروض اليوم' ? '#home/offers' : catHref(value);
+    if (type === 'قسم') return PAGE_TARGETS[value] || catHref(value);
     if (type === 'منتج') return '#search=' + encodeURIComponent(value);
     if (type === 'رابط') return /^(https?:\/\/|#)/i.test(value) ? value : null;
     return null;
@@ -726,6 +737,7 @@ function priceInfo(p, vn) {
     const hasOffer = newP > 0 && oldP > newP;
     return { oldP, newP, hasOffer, price: hasOffer ? newP : (oldP || newP), pct: hasOffer ? Math.round((oldP - newP) / oldP * 100) : 0 };
 }
+const SEC_COLORS = { 'برتقالي': '#DE5718', 'بني': '#5A3114' };
 const CAT_PALETTE = ['#DE5718', '#DE5718', '#DE5718', '#DE5718'];
 function catColorOf(p) {
     const cat = str(p['القسم']) || str((allProducts.find(x => str(x['الاسم']) === str(p['الاسم'])) || {})['القسم']);
@@ -1231,7 +1243,7 @@ async function checkout() {
     if (mode === 'share') offerInvoice(getHist()[0], { text: m });
 }
 
-window.TM={get route(){return currentRoute},get user(){return getUser()},get S(){return S},get products(){return allProducts},get offers(){return allOffers},get cats(){return CATEGORIES},get catMeta(){return catMeta},navigate:(r)=>navigate(r),catLabel:(c)=>catLabel(c),get cart(){return cart},totals:()=>totals(),cur:()=>cur(),fmt:(n)=>fmt(n),priceInfo:(p)=>priceInfo(p),phone:()=>getCleanPhone(S['رقم الواتساب']),cleanPhone:(r)=>getCleanPhone(r),get hiddenPages(){return Array.from(HIDDEN_PAGES)},clear(){cart=[];saveCart();updateCartUI()}};
+window.TM={get route(){return currentRoute},get user(){return getUser()},get S(){return S},get products(){return allProducts},get offers(){return allOffers},get cats(){return CATEGORIES},get catMeta(){return catMeta},navigate:(r)=>navigate(r),catLabel:(c)=>catLabel(c),get cart(){return cart},totals:()=>totals(),cur:()=>cur(),fmt:(n)=>fmt(n),priceInfo:(p)=>priceInfo(p),phone:()=>getCleanPhone(S['رقم الواتساب']),cleanPhone:(r)=>getCleanPhone(r),get hiddenPages(){return Array.from(HIDDEN_PAGES)},hrefOf:(k,x)=>{const t=tgtOf({'يودّي على':k,'منتج أو رابط':x});return targetHref(t.type,t.value)},clear(){cart=[];saveCart();updateCartUI()}};
 
 /* ---------- الأحداث (تفويض واحد لكل الصفحة) ---------- */
 document.addEventListener('click', (e) => {
@@ -1312,4 +1324,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 40 */
+/* ترولي ماركت فيرجن 41 */

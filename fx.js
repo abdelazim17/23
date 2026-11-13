@@ -27,7 +27,7 @@ function hero(){
   var home=document.getElementById('page-home');if(!home||home.querySelector('.fx-hero')||!yes('إظهار الهيرو'))return;
   if(!window.TM||!TM.cats.length)return;
   var h=document.createElement('section');h.className='fx-hero fx-hero-img';
-  var dsk=S_('صورة الهيرو','images/hero.svg'),mob=S_('صورة الهيرو (موبايل)','images/hero-mobile.svg'),lnk=S_('رابط الهيرو','#categories')||'#categories';
+  var dsk=S_('صورة الهيرو','images/hero.svg'),mob=S_('صورة الهيرو (موبايل)','images/hero-mobile.svg'),lnk=(window.TM&&TM.hrefOf&&TM.hrefOf(S_('الهيرو يودّي على','كل الأقسام'),S_('الهيرو: منتج أو رابط','')))||'#categories';
   h.innerHTML='<a class="fx-hero-link" href="'+lnk.replace(/"/g,'')+'"><picture><source media="(max-width:700px)"><img alt="ترولي ماركت" decoding="async" fetchpriority="high"></picture></a>';
   var pic=h.querySelector('picture'),im=pic.querySelector('img'),so=pic.querySelector('source');
   if(mob)so.setAttribute('srcset',mob);else so.remove();
@@ -50,7 +50,7 @@ function themeSet(){if(!window.TM||!TM.S)return;var ok=function(c){return /^#[0-
 /* 3d) طريقة الدفع في السلة */
 function payInit(){var sel=document.getElementById('cust-pay'),box=document.getElementById('pay-box');if(!sel||sel.dataset.ok||!window.TM||!TM.S)return;sel.dataset.ok=1;
   if(S_('إظهار طريقة الدفع','نعم')==='لا'){box.style.display='none';sel.innerHTML='';return}
-  var list=String(S_('طرق الدفع','الدفع عند الاستلام')).split(/[,،]/).map(function(x){return x.trim()}).filter(Boolean);
+  var list=[1,2,3,4,5].map(function(i){return String(S_('طريقة الدفع '+i,i==1?'الدفع عند الاستلام':'')).trim()}).filter(Boolean);
   sel.innerHTML='';list.forEach(function(x){var o=document.createElement('option');o.textContent=x;sel.appendChild(o)});
   var note=document.getElementById('pay-note'),txt=S_('ملاحظة الدفع الإلكتروني','');
   function sync(){var cod=/عند الاستلام|كاش عند|نقد/.test(sel.value);note.textContent=(!cod&&txt)?txt:'';note.style.display=note.textContent?'block':'none'}
@@ -162,7 +162,7 @@ document.addEventListener('keydown',function(e){if(e.key!=='Enter')return;var t=
 function about(){
   var p=document.getElementById('page-about');if(!p||p.querySelector('.ab-wrap')||!window.TM||!TM.products.length)return;
   var n=TM.products.length,c=TM.cats.length,fr=parseFloat(S_('حد التوصيل المجاني',0))||0,cur=S_('رمز العملة','ج');
-  var feats=[1,2,3,4].map(function(i){return (S_('ميزة '+i,'')||'').split('|')}).filter(function(f){return f[0]});
+  var feats=[1,2,3,4].map(function(i){return [S_('ميزة '+i+' (عنوان)',''),S_('ميزة '+i+' (وصف)','')]}).filter(function(f){return f[0]});
   var abs=[['من نحن','قصتنا'],['هدفنا','هدفنا'],['رؤيتنا','رؤيتنا']].map(function(k){return [S_(k[1]+' (عنوان)',k[0]),S_(k[1]+' (نص)','')]}).filter(function(a){return a[1]});
   var w=document.createElement('div');w.className='ab-wrap';
   var h='<div class="ab-stats"><div><b>'+n+'+</b><span>منتج</span></div><div><b>'+c+'</b><span>قسم</span></div><div><b>'+String(S_('إحصائية 3 (رقم)','24/7')).replace(/[<>&]/g,'')+'</b><span>'+String(S_('إحصائية 3 (نص)','اطلب في أي وقت')).replace(/[<>&]/g,'')+'</span></div></div>';
@@ -197,4 +197,4 @@ function boot(){fitLogo();arm();vids();hero();capsule();tick();mo.observe(docume
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 var n=0,iv=setInterval(function(){hero();capsule();heads();about();cartExtras();paint();offers();themeSet();palette();payInit();footer();searchChips();viewFix();arm();vids();tick();if(++n>40)clearInterval(iv)},500);
 })();
-/* ترولي ماركت فيرجن 40 */
+/* ترولي ماركت فيرجن 41 */
