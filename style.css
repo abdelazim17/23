@@ -811,7 +811,7 @@ body>*:not(#invoice-modal){display:none !important}
 .fx-hero .fx-tile{box-shadow:0 6px 18px color-mix(in srgb,var(--tc,var(--p-orange)) 30%,transparent) !important}
 body.fx-nohalo .product-card,body.fx-nohalo .fx-hero .fx-tile{box-shadow:0 2px 10px rgba(0,0,0,.06) !important}
 .pimg{background:transparent !important}
-.pimg .product-img{display:block;background:transparent !important;mix-blend-mode:multiply}
+.pimg .product-img{display:block;background:transparent !important}
 .pimg .discount-badge.tag-badge.tag-solo{top:10px !important;right:10px !important;bottom:auto !important;left:auto !important}
 .swipe-slider-container{background:none !important;padding:0 !important;box-shadow:none !important;border:0 !important;border-radius:0 !important}
 .slide-item,.banner-link,.split-banners .half-banner{box-shadow:none !important;border:0 !important}
@@ -1475,7 +1475,7 @@ body.tm2.tm2.tm2 .ban-ov em{background:var(--tm-ye) !important;color:var(--tm-br
 body.tm2.tm2.tm2 .ban-plain{background:linear-gradient(135deg,#EC7432,#D14A10) !important}
 body.tm2.tm2.tm2 .quick-link-text{background:var(--tm-or) !important;color:var(--tm-ofl) !important;border:0 !important}
 body.tm2.tm2.tm2 .quick-link-square{background:var(--g-bg) !important;border:1.5px solid var(--g-brd) !important;box-shadow:var(--g-sh) !important}
-body.tm2.tm2.tm2 .product-card{background:var(--g-bg) !important;border:1.5px solid var(--g-brd) !important;border-radius:22px !important;box-shadow:var(--g-sh) !important}
+body.tm2.tm2.tm2 .product-card{background:#fff !important;border:1.5px solid var(--tm-ln) !important;border-radius:22px !important;box-shadow:var(--g-sh) !important}
 body.tm2.tm2.tm2 .product-card:hover{border-color:rgba(222,87,24,.55) !important;box-shadow:0 12px 30px rgba(150,80,30,.16),inset 0 1px 0 rgba(255,255,255,.9) !important}
 body.tm2.tm2.tm2 .product-card.in-cart,body.tm2.tm2.tm2 .product-card.in-cart:hover{border:2px solid var(--tm-or) !important}
 body.tm2.tm2.tm2 .product-card h3,body.tm2.tm2.tm2 .product-card .product-name{color:var(--tm-brd) !important;font-weight:700 !important}
@@ -1612,4 +1612,4 @@ body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-
 body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
 body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
 }
-/* ترولي ماركت فيرجن 41 */
+/* ترولي ماركت فيرجن 42 */
