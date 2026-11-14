@@ -124,7 +124,7 @@ const ICON_SCOOTER = '<svg class="tms" viewBox="0 0 48 36" aria-hidden="true"><g
 
 /* ---------- تحميل الإكسيل ---------- */
 /* ---------- تحميل البيانات: عرض فوري من الكاش + تحديث في الخلفية ---------- */
-const CACHE_KEY = 'tm_data_v9', FRESH_MS = 10 * 60 * 1000;
+const CACHE_KEY = 'tm_data_v9', FRESH_MS = 10 * 60 * 1000, MAX_AGE_MS = 12 * 3600 * 1000;   // الكاش يخلص بعد 12 ساعة
 function readCache() { try { return JSON.parse(ls.get(CACHE_KEY)); } catch (e) { return null; } }
 function writeCache(obj) { try { ls.set(CACHE_KEY, JSON.stringify(obj)); } catch (e) {} }
 const XLSX_SRCS = ['xlsx.full.min.js', 'xlsx.full.min.js?retry=1'];   // الملف محلي (الـCSP بتمنع أي CDN)
@@ -169,7 +169,7 @@ function showUpdateBar() {
 }
 async function loadExcelData() {
     const cached = readCache();
-    if (cached && cached.sheets) {
+    if (cached && cached.sheets && Date.now() - (cached.t || 0) < MAX_AGE_MS) {
         let ok = true;
         try { initFromData(cached); } catch (e) { console.error(e); ok = false; ls.del(CACHE_KEY); }
         if (ok && Date.now() - (cached.t || 0) < FRESH_MS) return;       // الكاش لسه جديد
@@ -1210,7 +1210,7 @@ async function checkout() {
     if ((needPhone || phone) && !validPhone(digits(phone))) { $('cust-phone').focus(); toast('اكتب رقم موبايل صحيح (مثال: 01012345678)'); return; }
     const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
     const no = 'TM-' + String(d.getFullYear()).slice(2) + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '-' + Math.random().toString(36).slice(2, 5).toUpperCase();
-    const line = '━━━━━━━━━━━━━━━━━━', thin = '┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈';
+    const line = '------------------', thin = '- - - - - - - - -';   // ASCII: كل حرف عربي/رمز بيطوّل رابط واتساب
     let m = `🧾 *فاتورة*\n${line}\n`;
     m += `*رقم الفاتورة:* \u2066${no}\u2069\n*التاريخ:* ${d.toLocaleDateString('ar-EG')} — ${d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}\n`;
     if (name || phone || addr || land) { m += `${line}\n👤 *بيانات العميل*\n`; if (name) m += `الاسم: ${name}\n`; if (phone) m += `الموبايل: \u2066${digits(phone)}\u2069\n`; if (addr) m += `العنوان: ${addr}\n`; if (land) m += `علامة مميزة: ${land}\n`; }
@@ -1324,4 +1324,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 42 */
+/* ترولي ماركت فيرجن 44 */
