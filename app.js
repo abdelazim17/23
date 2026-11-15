@@ -42,7 +42,7 @@ let sliderData = [], quickLinksData = [], bannersData = {}, catalogData = [], bu
 let sortMode = 'default';
 let catMeta = {};
 const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" fill="rgba(16,20,26,.14)"/><path d="M60 130l25-30 20 22 15-17 20 25z" fill="rgba(16,20,26,.14)"/><circle cx="75" cy="75" r="12" fill="rgba(16,20,26,.14)"/></svg>');
-const EXCLUDED = ['السلايدر', 'البنرات', 'عروض اليوم', 'مجلة العروض', 'الإعدادات', 'أقسام سريعة', 'دليل الاستخدام', 'فهرس', 'قوائم', 'إدارة الأقسام', 'باقات العروض', 'عام', 'الألوان', 'التواصل والفوتر', 'الطلب والدفع', 'الهيرو والرئيسية', 'المنتجات', 'صفحة حول'];
+const EXCLUDED = ['مصادر الأسعار', 'السلايدر', 'البنرات', 'عروض اليوم', 'مجلة العروض', 'الإعدادات', 'أقسام سريعة', 'دليل الاستخدام', 'فهرس', 'قوائم', 'إدارة الأقسام', 'باقات العروض', 'عام', 'الألوان', 'التواصل والفوتر', 'الطلب والدفع', 'الهيرو والرئيسية', 'المنتجات', 'صفحة حول'];
 const ls = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }, del(k) { try { localStorage.removeItem(k); } catch (e) {} } };
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -1324,4 +1324,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 45 */
+/* ترولي ماركت فيرجن 47 */
