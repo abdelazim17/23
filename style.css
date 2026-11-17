@@ -242,8 +242,9 @@ a.cat-filter-btn{display:inline-block}
 .quick-link-text{font-size:0.95rem !important}
 .quick-links-scroll{gap:14px !important}
 }
-.product-card.sold-out{opacity:0.6}
-.product-card.sold-out .product-img{filter:grayscale(1)}
+.product-card.sold-out{opacity:1 !important;background:rgba(255,255,255,.38) !important;border-color:rgba(90,49,20,.10) !important;border-bottom-color:rgba(90,49,20,.16) !important;box-shadow:none !important}
+.product-card.sold-out > :not(.pimg){opacity:.5}
+.product-card.sold-out .product-img{filter:none !important;opacity:1}
 .add-to-cart-btn:disabled{background:rgba(59,36,16,.6);cursor:not-allowed}
 .site-footer{text-align:center;padding:22px 15px 110px;font-size:0.9rem;line-height:1.8}
 .wa-float{position:fixed;bottom:24px;right:20px;width:56px;height:56px;border-radius:50%;align-items:center;justify-content:center;font-size:1.9rem;z-index:900;text-decoration:none}
@@ -1612,4 +1613,4 @@ body.tm2.tm2.tm2 :is(.product-card,.bundle,.fx-tile,.ord-card,.ab-stats>div,.ab-
 body.tm2.tm2.tm2 header.navbar .cart-btn{width:96px !important;min-width:96px !important;height:42px !important;font-size:1rem !important;gap:7px !important;padding:0 10px !important}
 body.tm2.tm2.tm2 header.navbar .cart-btn i{font-size:1.15rem !important}
 }
-/* ترولي ماركت فيرجن 47 */
+/* ترولي ماركت فيرجن 51 */

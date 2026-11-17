@@ -382,7 +382,8 @@ function applySettings() {
     if (str(S['أيقونة الموقع'])) {
         let link = document.querySelector("link[rel~='icon']");
         if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
-        link.href = S['أيقونة الموقع'];
+        const vv = ((document.querySelector('script[src*="app.js"]') || {}).src || '').match(/[?&]v=([\w]+)/);   // نفس رقم النسخة عشان الأيقونة تتحدث عند الزائر
+        link.href = S['أيقونة الموقع'] + (vv && /^images\//.test(S['أيقونة الموقع']) && !/\?/.test(S['أيقونة الموقع']) ? '?v=' + vv[1] : '');
     }
 }
 
@@ -581,7 +582,7 @@ function renderQuickLinks() {
         c.addEventListener('mouseenter', () => { if (matchMedia('(hover:hover)').matches) hovering = true; }, sg);
         c.addEventListener('mouseleave', () => { hovering = false; pauseUntil = Date.now() + 800; }, sg);
         /* حركة مستمرة بسرعة ثابتة (من غير وقوف): قسم واحد كل «مدة حركة الأقسام السريعة» ثانية، واللفّة دايرية */
-        const secPerTile = Math.max(0.4, num(S['مدة حركة الأقسام السريعة بالثواني']) || 1.2);
+        const secPerTile = Math.max(0.4, num(S['مدة حركة الأقسام السريعة بالثواني']) || 2.4);
         const speed = stepPx / secPerTile;                                    // بكسل في الثانية
         const inView = () => { const r = c.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
         const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -751,8 +752,9 @@ function productHTML(p) {
     const { oldP, hasOffer, price, pct } = priceInfo(p);
     const c = esc(cur());
     const priceHTML = priceHtml(price, oldP, hasOffer);
-    const vInfo = variantsOf(p).map(v => Object.assign({ n: v.n, i: v.i || '' }, priceInfo(p, v.n))), variants = vInfo.map(v => v.n);
-    const mainImg = str(p['صورة']) || str(S['صورة المنتج الافتراضية']) || (window.tmFallbackSrc && window.tmFallbackSrc(p['الاسم'], p['القسم'])) || PLACEHOLDER;
+    const noImg = !!p.soldOut;   // غير متوفر: صورته ما بتتحملش ولا بتتخزن، بنستخدم الصورة الافتراضية بس
+    const vInfo = variantsOf(p).map(v => Object.assign({ n: v.n, i: noImg ? '' : (v.i || '') }, priceInfo(p, v.n))), variants = vInfo.map(v => v.n);
+    const mainImg = (noImg ? '' : str(p['صورة'])) || str(S['صورة المنتج الافتراضية']) || (window.tmFallbackSrc && window.tmFallbackSrc(p['الاسم'], p['القسم'])) || PLACEHOLDER;
     const firstImg = (vInfo[0] && vInfo[0].i) || mainImg;   // نوع 1 هو الافتراضي: لو ليه صورة بتظهر من الأول
     const multi = new Set(vInfo.map(v => v.price)).size > 1;   // لو الأسعار مختلفة نكتب السعر جنب كل نوع في القايمة
     const variantHTML = variants.length ? `<div class="custom-select-wrapper"><div class="custom-select-display"><span>${esc(variants[0])}</span></div><div class="custom-select-options">${vInfo.map(v => `<div class="custom-option" data-v="${esc(v.n)}" data-pr="${v.price}" data-op="${v.hasOffer ? v.oldP : ''}" data-pct="${v.pct}"${v.i ? ` data-img="${esc(v.i)}"` : ''}>${esc(v.n)}${multi ? ` <small>— ${fmt(v.price)} ${c}</small>` : ''}</div>`).join('')}</div></div>` : '';
@@ -1324,4 +1326,4 @@ document.addEventListener('error', (e) => { const i = e.target; if (i && i.tagNa
 document.addEventListener('DOMContentLoaded', () => { loadExcelData(); });
 if ('serviceWorker' in navigator && location.protocol === 'https:') window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
 })();
-/* ترولي ماركت فيرجن 47 */
+/* ترولي ماركت فيرجن 51 */
